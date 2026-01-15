@@ -301,13 +301,14 @@ class CEODashboard {
         }
     }
     
-    // LOAD BUSINESS DATA
+    // LOAD BUSINESS DATA - FIXED
     async loadBusinessData(silent = false) {
         try {
             if (!silent) {
                 this.showLoadingIndicator(true);
             }
             
+            console.log('🔄 Loading business data...');
             this.businessData = await window.ceoDB.getBusinessData();
             
             this.updateDashboard();
@@ -364,11 +365,16 @@ class CEODashboard {
         }
     }
     
-    // UPDATE DASHBOARD
+    // UPDATE DASHBOARD - FIXED
     updateDashboard() {
-        if (!this.businessData) return;
+        if (!this.businessData) {
+            console.log('⚠️ No business data to update');
+            return;
+        }
         
         const { summary, sales, products, debts, customers, stock, topProducts, salesAnalysis } = this.businessData;
+        
+        console.log(`📊 Updating dashboard with ${sales?.length || 0} sales, ${products?.length || 0} products`);
         
         this.updateBigNumbers(summary, salesAnalysis);
         this.updateStockAlert(stock);
@@ -377,10 +383,11 @@ class CEODashboard {
         this.updateTopProductsTable(topProducts);
         this.updateStockTable(products);
         this.updateDebtsTable(debts);
-        this.updateCustomersTable(customers);
+        this.updateCustomersTable(customers || []);
         this.updateLastUpdateTime();
     }
     
+    // FIXED: This was causing the error
     updateBigNumbers(summary, salesAnalysis) {
         const totalSalesEl = document.getElementById('totalSales');
         const productsSoldEl = document.getElementById('productsSold');
@@ -391,14 +398,14 @@ class CEODashboard {
         const customerCountEl = document.getElementById('customerCount');
         const profitMarginEl = document.getElementById('profitMargin');
         
-        if (totalSalesEl) totalSalesEl.textContent = `₦${summary.totalSales.toLocaleString()}`;
-        if (productsSoldEl) productsSoldEl.textContent = summary.productsSold.toLocaleString();
-        if (staffCountEl) staffCountEl.textContent = summary.staffCount.toLocaleString();
-        if (totalDebtEl) totalDebtEl.textContent = `₦${summary.totalDebt.toLocaleString()}`;
-        if (transactionCountEl) transactionCountEl.textContent = `${summary.transactionCount} transactions`;
+        if (totalSalesEl) totalSalesEl.textContent = `₦${(summary?.totalSales || 0).toLocaleString()}`;
+        if (productsSoldEl) productsSoldEl.textContent = (summary?.productsSold || 0).toLocaleString();
+        if (staffCountEl) staffCountEl.textContent = (summary?.staffCount || 0).toLocaleString();
+        if (totalDebtEl) totalDebtEl.textContent = `₦${(summary?.totalDebt || 0).toLocaleString()}`;
+        if (transactionCountEl) transactionCountEl.textContent = `${summary?.transactionCount || 0} transactions`;
         if (averageSaleEl) averageSaleEl.textContent = `Avg: ₦${Math.round(salesAnalysis?.averageSale || 0).toLocaleString()}`;
-        if (customerCountEl) customerCountEl.textContent = `${customers?.length || 0} customers`;
-        if (profitMarginEl) profitMarginEl.textContent = `Margin: ${summary.profitMargin}%`;
+        if (customerCountEl) customerCountEl.textContent = `${summary?.activeCustomers || 0} customers`; // FIXED LINE
+        if (profitMarginEl) profitMarginEl.textContent = `Margin: ${summary?.profitMargin || '0'}%`;
     }
     
     updateStockAlert(stock) {
@@ -409,32 +416,32 @@ class CEODashboard {
         const goodCount = document.getElementById('goodCount');
         
         if (statusText) {
-            statusText.textContent = stock.status.toUpperCase();
+            statusText.textContent = (stock?.status || 'unknown').toUpperCase();
         }
         
         if (stockMessage) {
-            let msg = '';
-            if (stock.critical.length > 0) {
+            let msg = 'Analyzing inventory...';
+            if (stock?.critical?.length > 0) {
                 msg = `🚨 ${stock.critical.length} products need immediate restock`;
-            } else if (stock.warning.length > 0) {
+            } else if (stock?.warning?.length > 0) {
                 msg = `⚠️ ${stock.warning.length} products running low`;
-            } else {
+            } else if (stock?.good?.length > 0) {
                 msg = '✅ All stock levels are good';
             }
             stockMessage.textContent = msg;
         }
         
-        if (criticalCount && stock.critical.length > 0) {
-            criticalCount.textContent = `${stock.critical.length} critical`;
-            criticalCount.style.display = 'inline-block';
+        if (criticalCount) {
+            criticalCount.textContent = `${stock?.critical?.length || 0} critical`;
+            criticalCount.style.display = stock?.critical?.length > 0 ? 'inline-block' : 'none';
         }
-        if (warningCount && stock.warning.length > 0) {
-            warningCount.textContent = `${stock.warning.length} warning`;
-            warningCount.style.display = 'inline-block';
+        if (warningCount) {
+            warningCount.textContent = `${stock?.warning?.length || 0} warning`;
+            warningCount.style.display = stock?.warning?.length > 0 ? 'inline-block' : 'none';
         }
-        if (goodCount && stock.good.length > 0) {
-            goodCount.textContent = `${stock.good.length} good`;
-            goodCount.style.display = 'inline-block';
+        if (goodCount) {
+            goodCount.textContent = `${stock?.good?.length || 0} good`;
+            goodCount.style.display = stock?.good?.length > 0 ? 'inline-block' : 'none';
         }
     }
     
@@ -448,7 +455,7 @@ class CEODashboard {
         const totalProfitEl = document.getElementById('totalProfit');
         const analysisTotalEl = document.getElementById('analysisTotal');
         
-        if (peakHourEl) peakHourEl.textContent = '12:00';
+        if (peakHourEl) peakHourEl.textContent = 'N/A';
         if (peakHourAmountEl) peakHourAmountEl.textContent = '₦0';
         if (averageSaleAmountEl) averageSaleAmountEl.textContent = `₦${Math.round(salesAnalysis?.averageSale || 0).toLocaleString()}`;
         if (topReasonEl) topReasonEl.textContent = 'Regular Sale';
@@ -472,7 +479,7 @@ class CEODashboard {
         
         if (!tbody) return;
         
-        if (sales.length === 0) {
+        if (!sales || sales.length === 0) {
             tbody.innerHTML = `
                 <tr><td colspan="8" style="text-align: center; padding: 40px; color: #666;">
                     📭 No sales recorded today yet
@@ -489,13 +496,13 @@ class CEODashboard {
             html += `
                 <tr>
                     <td><strong>${sale.time || 'N/A'}</strong></td>
-                    <td>${sale.customer_name}</td>
-                    <td>${sale.product_name}</td>
-                    <td style="text-align: center;">${sale.quantity}</td>
+                    <td>${sale.customer_name || 'Customer'}</td>
+                    <td>${sale.product_name || 'Product'}</td>
+                    <td style="text-align: center;">${sale.quantity || 0}</td>
                     <td>₦${(sale.total_price || 0).toLocaleString()}</td>
-                    <td><span class="payment-method">${sale.payment_method}</span></td>
-                    <td><span class="sale-reason">${sale.reason}</span></td>
-                    <td style="color: #10b981;">₦${Math.round((sale.total_price || 0) * 0.3).toLocaleString()}</td>
+                    <td><span class="payment-method">${sale.payment_method || 'cash'}</span></td>
+                    <td><span class="sale-reason">${sale.reason || 'Sale'}</span></td>
+                    <td style="color: #10b981;">₦${Math.round(((sale.total_price || 0) * 0.3)).toLocaleString()}</td>
                 </tr>
             `;
         });
@@ -510,7 +517,7 @@ class CEODashboard {
         
         if (!tbody) return;
         
-        if (products.length === 0) {
+        if (!products || products.length === 0) {
             tbody.innerHTML = `
                 <tr><td colspan="7" style="text-align: center; padding: 40px; color: #666;">
                     📦 No product data available
@@ -522,18 +529,19 @@ class CEODashboard {
         
         let html = '';
         
-        products.forEach((product, index) => {
-            const status = product.current_qty <= CEO_CONFIG.STOCK_CRITICAL ? 'critical' :
-                          product.current_qty <= CEO_CONFIG.STOCK_WARNING ? 'warning' : 'good';
+        products.slice(0, 10).forEach((product, index) => {
+            const qty = product.current_qty || 0;
+            const status = qty <= CEO_CONFIG.STOCK_CRITICAL ? 'critical' :
+                          qty <= CEO_CONFIG.STOCK_WARNING ? 'warning' : 'good';
             
-            const reorderNeeded = product.current_qty <= CEO_CONFIG.STOCK_WARNING ? 'YES' : 'NO';
-            const stockValue = (product.current_qty || 0) * (product.retail_price || 0);
+            const reorderNeeded = qty <= CEO_CONFIG.STOCK_WARNING ? 'YES' : 'NO';
+            const stockValue = qty * (product.retail_price || 0);
             
             html += `
                 <tr>
-                    <td><strong>${product.name}</strong></td>
-                    <td style="text-align: center;">${product.current_qty}</td>
-                    <td style="text-align: center;">${product.sold_today || 0}</td>
+                    <td><strong>${product.name || 'Product'}</strong></td>
+                    <td style="text-align: center;">${qty}</td>
+                    <td style="text-align: center;">0</td>
                     <td>₦${stockValue.toLocaleString()}</td>
                     <td style="text-align: center;">0%</td>
                     <td><span class="reorder-${reorderNeeded === 'YES' ? 'needed' : 'ok'}">${reorderNeeded}</span></td>
@@ -552,7 +560,7 @@ class CEODashboard {
         
         if (!tbody) return;
         
-        if (products.length === 0) {
+        if (!products || products.length === 0) {
             tbody.innerHTML = `
                 <tr><td colspan="7" style="text-align: center; padding: 40px; color: #666;">
                     📭 No products in inventory
@@ -566,8 +574,8 @@ class CEODashboard {
         let totalValue = 0;
         
         products.slice(0, 15).forEach(p => {
-            const qty = p.current_qty || p.quantity || 0;
-            const price = p.retail_price || p.price || 0;
+            const qty = p.current_qty || 0;
+            const price = p.retail_price || 0;
             const value = qty * price;
             totalValue += value;
             
@@ -577,7 +585,7 @@ class CEODashboard {
             
             html += `
                 <tr>
-                    <td><strong>${p.name || p.product_name}</strong></td>
+                    <td><strong>${p.name || 'Product'}</strong></td>
                     <td style="text-align: center;">${qty}</td>
                     <td style="text-align: center;">${CEO_CONFIG.STOCK_WARNING}</td>
                     <td>₦${price.toLocaleString()}</td>
@@ -598,7 +606,7 @@ class CEODashboard {
         
         if (!tbody) return;
         
-        if (debts.length === 0) {
+        if (!debts || debts.length === 0) {
             tbody.innerHTML = `
                 <tr><td colspan="7" style="text-align: center; padding: 40px; color: #10b981;">
                     ✅ No outstanding debts
@@ -619,7 +627,7 @@ class CEODashboard {
             
             html += `
                 <tr class="${overdueClass}">
-                    <td>${debt.customer_name}</td>
+                    <td>${debt.customer_name || 'Customer'}</td>
                     <td>Product</td>
                     <td>₦${(debt.amount_owing || 0).toLocaleString()}</td>
                     <td style="text-align: center;">${days} days</td>
@@ -640,7 +648,7 @@ class CEODashboard {
         
         if (!tbody) return;
         
-        if (customers.length === 0) {
+        if (!customers || customers.length === 0) {
             tbody.innerHTML = `
                 <tr><td colspan="6" style="text-align: center; padding: 40px; color: #666;">
                     👤 No customer data available
@@ -655,10 +663,10 @@ class CEODashboard {
         customers.slice(0, 10).forEach(customer => {
             html += `
                 <tr>
-                    <td><strong>${customer.name}</strong></td>
-                    <td>₦${customer.total_spent?.toLocaleString() || '0'}</td>
+                    <td><strong>${customer.name || 'Customer'}</strong></td>
+                    <td>₦${(customer.total_spent || 0).toLocaleString()}</td>
                     <td style="text-align: center;">${customer.purchase_count || 0}</td>
-                    <td>₦${Math.round(customer.total_spent / (customer.purchase_count || 1)).toLocaleString()}</td>
+                    <td>₦${Math.round((customer.total_spent || 0) / Math.max(customer.purchase_count || 1, 1)).toLocaleString()}</td>
                     <td>Today</td>
                     <td>${customer.phone || 'N/A'}</td>
                 </tr>
@@ -666,7 +674,7 @@ class CEODashboard {
         });
         
         tbody.innerHTML = html;
-        if (totalEl) totalEl.textContent = `Top ${customers.length}`;
+        if (totalEl) totalEl.textContent = `Top ${Math.min(customers.length, 10)}`;
     }
     
     // PDF REPORT
@@ -697,32 +705,38 @@ class CEODashboard {
     }
     
     createPDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        
-        // Add title
-        doc.setFontSize(20);
-        doc.text('Arijeem Insight 360 - CEO Report', 20, 20);
-        
-        // Add date
-        doc.setFontSize(12);
-        doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 30);
-        
-        // Add summary
-        doc.setFontSize(16);
-        doc.text('Business Summary', 20, 50);
-        
-        const summary = this.businessData.summary;
-        doc.setFontSize(12);
-        doc.text(`Total Sales Today: ₦${summary.totalSales.toLocaleString()}`, 30, 65);
-        doc.text(`Products Sold: ${summary.productsSold}`, 30, 75);
-        doc.text(`Outstanding Debt: ₦${summary.totalDebt.toLocaleString()}`, 30, 85);
-        doc.text(`Profit Margin: ${summary.profitMargin}%`, 30, 95);
-        
-        // Save PDF
-        doc.save(`Arijeem-Report-${new Date().toISOString().split('T')[0]}.pdf`);
-        
-        this.showMessage('PDF report generated!', 'success');
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Add title
+            doc.setFontSize(20);
+            doc.text('Arijeem Insight 360 - CEO Report', 20, 20);
+            
+            // Add date
+            doc.setFontSize(12);
+            doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 30);
+            
+            // Add summary
+            doc.setFontSize(16);
+            doc.text('Business Summary', 20, 50);
+            
+            const summary = this.businessData.summary;
+            doc.setFontSize(12);
+            doc.text(`Total Sales Today: ₦${(summary.totalSales || 0).toLocaleString()}`, 30, 65);
+            doc.text(`Products Sold: ${summary.productsSold || 0}`, 30, 75);
+            doc.text(`Outstanding Debt: ₦${(summary.totalDebt || 0).toLocaleString()}`, 30, 85);
+            doc.text(`Profit Margin: ${summary.profitMargin || '0'}%`, 30, 95);
+            
+            // Save PDF
+            doc.save(`Arijeem-Report-${new Date().toISOString().split('T')[0]}.pdf`);
+            
+            this.showMessage('PDF report generated!', 'success');
+            
+        } catch (error) {
+            console.error('PDF creation error:', error);
+            this.showMessage('Failed to create PDF', 'error');
+        }
     }
     
     // LOGOUT
