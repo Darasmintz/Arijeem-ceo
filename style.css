@@ -698,4 +698,249 @@ tr:hover {
         padding: 12px 20px;
         font-size: 1rem;
     }
+
+}
+
+/* Add these styles to your existing style.css */
+
+/* Refresh Button */
+.btn-refresh {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.3s;
+}
+
+.btn-refresh:hover {
+    background: #2563eb;
+    transform: translateY(-2px);
+}
+
+.btn-refresh:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Data Freshness Indicator */
+#dataFreshness {
+    font-size: 0.85rem;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background: #f8fafc;
+    display: inline-block;
+    margin-top: 5px;
+    font-weight: 600;
+}
+
+/* Payment Method Badges */
+.payment-method {
+    background: #e0f2fe;
+    color: #0369a1;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.payment-method.cash {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.payment-method.credit {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.payment-method.transfer {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
+/* Overdue Status */
+.overdue-severe {
+    background: #fef2f2 !important;
+}
+
+.overdue-severe td {
+    color: #dc2626;
+    font-weight: bold;
+}
+
+.overdue-high {
+    background: #fffbeb !important;
+}
+
+.overdue-high td {
+    color: #d97706;
+}
+
+/* Update Animation */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.updating {
+    animation: pulse 1s infinite;
+}
+
+/* Connection Status */
+.connection-good {
+    background: #d1fae5;
+    color: #065f46;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    display: inline-block;
+    margin-top: 5px;
+}
+
+.connection-warning {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    display: inline-block;
+    margin-top: 5px;
+}
+
+.connection-error {
+    background: #fee2e2;
+    color: #dc2626;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    display: inline-block;
+    margin-top: 5px;
+}
+
+/* Big Number Updates */
+.big-number.updated {
+    animation: highlight 1s ease;
+}
+
+@keyframes highlight {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* Section Updates */
+.section.updated {
+    animation: sectionHighlight 0.5s ease;
+}
+
+@keyframes sectionHighlight {
+    0% { box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); }
+    50% { box-shadow: 0 4px 20px rgba(59, 130, 246, 0.2); }
+    100% { box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); }
+}
+
+/* Live Indicator */
+.live-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #10b981;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    animation: pulse 2s infinite;
+}
+
+.live-indicator::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    background: white;
+    border-radius: 50%;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Data Age Indicator */
+.data-age {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-left: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.data-age.fresh {
+    color: #10b981;
+}
+
+.data-age.warning {
+    color: #f59e0b;
+}
+
+.data-age.stale {
+    color: #ef4444;
+}
+
+/* Update Notification */
+.update-notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #3b82f6;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.update-notification.fade-out {
+    animation: slideOut 0.3s ease forwards;
+}
+
+@keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .btn-refresh {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    
+    .update-notification {
+        left: 20px;
+        right: 20px;
+        bottom: 80px;
+    }
 }
