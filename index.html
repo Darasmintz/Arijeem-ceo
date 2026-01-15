@@ -6,6 +6,8 @@
     <title>Arijeem CEO Simple View</title>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👑</text></svg>">
+    <!-- Load jsPDF directly in head -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -62,7 +64,7 @@
                         <div>
                             <strong>After account creation:</strong>
                             <p>• You will see live business data immediately</p>
-                            <p>• Daily report sent automatically at 10:00 PM</p>
+                            <p>• Daily report sent automatically at 8:00 PM</p>
                             <p>• One login - access from anywhere in the world</p>
                         </div>
                     </div>
@@ -114,7 +116,7 @@
                 </div>
                 
                 <div class="footer">
-                    <p>Automatic daily report at 10:00 PM • Read-only access</p>
+                    <p>Automatic daily report at 8:00 PM • Read-only access</p>
                 </div>
             </div>
         </div>
@@ -126,14 +128,12 @@
                 <div class="header-left">
                     <h1 id="dashboardTitle">👑 CEO BUSINESS VIEW</h1>
                     <p id="welcomeMessage">Good morning! | Updated: <span id="updateTime">Just now</span></p>
-                    <p id="reportTime">Next report: Today, 10:00 PM</p>
+                    <p id="reportTime">Next report: Today, 8:00 PM</p>
                     <p id="connectionStatus" class="connection-good">✅ Connected to main database</p>
                 </div>
                 <div class="header-right">
-                   <button onclick="window.ceoDashboard.generatePDFReport()" class="btn-pdf">
-    📄 DOWNLOAD PDF REPORT
-</button>
-                    <button onclick="window.ceoDashboard.loadBusinessData()" class="btn-secondary">🔄 REFRESH DATA</button>
+                    <button onclick="window.ceoDashboard.generatePDFReport()" class="btn-pdf">📄 DOWNLOAD PDF REPORT</button>
+                    <button onclick="window.ceoDashboard.forceRefreshData()" class="btn-secondary">🔄 REFRESH DATA</button>
                     <button onclick="window.ceoDashboard.logoutCEO()" class="btn-logout">LOGOUT</button>
                 </div>
             </div>
@@ -252,13 +252,14 @@
                 </div>
             </div>
             
-            <!-- Top 10 Products -->
+            <!-- Top 10 Products with Auto-Scroll -->
             <div class="section">
                 <div class="section-header">
-                    <h2>🏆 TOP 10 PRODUCTS</h2>
-                    <div class="section-total" id="topProductsTotal">Showing 10</div>
+                    <h2>🏆 TOP PERFORMING PRODUCTS</h2>
+                    <div class="section-total" id="topProductsTotal">Auto-scrolling</div>
                 </div>
-                <div class="table-container">
+                <div class="table-container" style="position: relative; max-height: 400px; overflow: hidden;">
+                    <div class="auto-scroll-indicator">↕ Auto-scrolling</div>
                     <table id="topProductsTable">
                         <thead>
                             <tr>
@@ -266,7 +267,7 @@
                                 <th>CURRENT STOCK</th>
                                 <th>SOLD TODAY</th>
                                 <th>STOCK VALUE</th>
-                                <th>DAYS SUPPLY</th>
+                                <th>TURNOVER RATE</th>
                                 <th>REORDER NEEDED</th>
                                 <th>STATUS</th>
                             </tr>
@@ -360,29 +361,461 @@
                 <div class="report-icon">📄</div>
                 <div class="report-content">
                     <h3>DAILY AUTOMATIC PDF REPORT</h3>
-                    <p><strong>Generated automatically every day at 10:00 PM</strong></p>
+                    <p><strong>Generated automatically every day at 8:00 PM</strong></p>
                     <p>Report includes: Today's sales with reasons • Top 10 products • Current stock levels • Financial summary • Outstanding debts • Customer insights</p>
                     <p><strong>A5 Format PDF</strong> - Professional, printable report</p>
-                    <button onclick="window.ceoDashboard.generatePDFReport()" class="btn-primary">
-    📥 GENERATE TODAY'S PDF REPORT
-</button>
+                    <button onclick="window.ceoDashboard.generatePDFReport()" class="btn-primary">📥 GENERATE TODAY'S PDF REPORT</button>
                 </div>
             </div>
             
             <div class="footer">
                 <p>Arijeem Enterprises • CEO Simple System v2.0</p>
                 <p>Connected to: arijeem-insight360.vercel.app • Detailed reports with insights</p>
-                <p>PDF reports at 10:00 PM • One login • Access worldwide</p>
+                <p>PDF reports at 8:00 PM • One login • Access worldwide</p>
             </div>
         </div>
     </div>
     
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="config.js"></script>
     <script src="database.js"></script>
     <script src="script.js"></script>
+    
+    <script>
+    // PDF Generation Helper Functions
+    class PDFGenerator {
+        static async generatePDFReport(businessData) {
+            if (!businessData) {
+                throw new Error('No business data available');
+            }
+            
+            const { summary, sales, products, debts, customers, topProducts, salesAnalysis, stock } = businessData;
+            const now = new Date();
+            
+            // Use jsPDF from window
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a5'
+            });
+            
+            // Set document properties
+            doc.setProperties({
+                title: `Arijeem Daily Report - ${now.toLocaleDateString()}`,
+                subject: 'CEO Business Dashboard Report',
+                author: 'Arijeem Enterprises',
+                creator: 'CEO Simple Dashboard v2.0'
+            });
+            
+            // Add header
+            PDFGenerator.addHeader(doc, now);
+            
+            // Add summary section
+            PDFGenerator.addSummarySection(doc, summary, salesAnalysis);
+            
+            // Add sales section
+            PDFGenerator.addSalesSection(doc, sales);
+            
+            // Add top products section
+            PDFGenerator.addTopProductsSection(doc, topProducts);
+            
+            // Add stock section
+            PDFGenerator.addStockSection(doc, stock);
+            
+            // Add debts section
+            if (debts.length > 0) {
+                PDFGenerator.addDebtsSection(doc, debts);
+            }
+            
+            // Add customer insights
+            if (customers.length > 0) {
+                PDFGenerator.addCustomersSection(doc, customers);
+            }
+            
+            // Add footer
+            PDFGenerator.addFooter(doc, now);
+            
+            // Save the PDF
+            const filename = `Arijeem-Report-${now.toISOString().split('T')[0]}.pdf`;
+            doc.save(filename);
+            
+            return filename;
+        }
+        
+        static addHeader(doc, date) {
+            // Company Header
+            doc.setFontSize(20);
+            doc.setTextColor(0, 75, 147);
+            doc.text('ARIJEEM ENTERPRISES', 105, 15, null, null, 'center');
+            
+            // Report Title
+            doc.setFontSize(16);
+            doc.setTextColor(0, 0, 0);
+            doc.text('DAILY CEO REPORT', 105, 23, null, null, 'center');
+            
+            // Date
+            doc.setFontSize(12);
+            doc.setTextColor(100, 100, 100);
+            const dateStr = date.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            doc.text(dateStr, 105, 30, null, null, 'center');
+            
+            // Separator line
+            doc.setDrawColor(200, 200, 200);
+            doc.line(20, 35, 145, 35);
+            
+            // Timestamp
+            doc.setFontSize(10);
+            doc.text(`Generated: ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`, 20, 40);
+            doc.text('Page 1', 145, 40, null, null, 'right');
+        }
+        
+        static addSummarySection(doc, summary, salesAnalysis) {
+            doc.setFontSize(14);
+            doc.setTextColor(0, 75, 147);
+            doc.text('EXECUTIVE SUMMARY', 20, 50);
+            
+            doc.setDrawColor(200, 200, 200);
+            doc.line(20, 52, 145, 52);
+            
+            doc.setFontSize(11);
+            doc.setTextColor(0, 0, 0);
+            
+            const summaryData = [
+                ['Total Sales', `₦${summary.totalSales.toLocaleString()}`],
+                ['Products Sold', summary.productsSold.toLocaleString()],
+                ['Transactions', summary.transactionCount],
+                ['Average Sale', `₦${Math.round(salesAnalysis?.averageSale || 0).toLocaleString()}`],
+                ['Total Profit', `₦${Math.round(summary.totalProfit || 0).toLocaleString()}`],
+                ['Profit Margin', `${summary.profitMargin}%`],
+                ['Outstanding Debt', `₦${summary.totalDebt.toLocaleString()}`],
+                ['Active Staff', summary.staffCount],
+                ['Active Customers', summary.activeCustomers],
+                ['Stock Status', summary.stockStatus.toUpperCase()]
+            ];
+            
+            let y = 60;
+            summaryData.forEach(([label, value], index) => {
+                if (index % 2 === 0) {
+                    doc.text(label, 25, y);
+                    doc.text(value, 80, y);
+                } else {
+                    doc.text(label, 90, y);
+                    doc.text(value, 140, y, null, null, 'right');
+                    y += 8;
+                }
+            });
+            
+            if (summaryData.length % 2 !== 0) {
+                y += 8;
+            }
+            
+            doc.setDrawColor(200, 200, 200);
+            doc.line(20, y + 5, 145, y + 5);
+        }
+        
+        static addSalesSection(doc, sales) {
+            doc.addPage();
+            
+            doc.setFontSize(14);
+            doc.setTextColor(0, 75, 147);
+            doc.text('TODAY\'S SALES DETAILS', 20, 20);
+            
+            if (sales.length === 0) {
+                doc.setFontSize(11);
+                doc.setTextColor(100, 100, 100);
+                doc.text('No sales recorded today', 20, 30);
+                return;
+            }
+            
+            // Table header
+            doc.setFontSize(10);
+            doc.setTextColor(255, 255, 255);
+            doc.setFillColor(0, 75, 147);
+            doc.rect(20, 30, 125, 8, 'F');
+            doc.text('Time', 22, 36);
+            doc.text('Customer', 40, 36);
+            doc.text('Product', 80, 36);
+            doc.text('Qty', 115, 36);
+            doc.text('Amount', 125, 36);
+            doc.text('Reason', 145, 36);
+            
+            // Sales rows
+            doc.setTextColor(0, 0, 0);
+            let y = 40;
+            
+            sales.slice(0, 20).forEach(sale => {
+                if (y > 180) {
+                    doc.addPage();
+                    y = 20;
+                    // Add header for new page
+                    doc.setFontSize(10);
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFillColor(0, 75, 147);
+                    doc.rect(20, y, 125, 8, 'F');
+                    doc.text('Time', 22, y + 6);
+                    doc.text('Customer', 40, y + 6);
+                    doc.text('Product', 80, y + 6);
+                    doc.text('Qty', 115, y + 6);
+                    doc.text('Amount', 125, y + 6);
+                    doc.text('Reason', 145, y + 6);
+                    y += 15;
+                }
+                
+                const time = sale.time || new Date(sale.sale_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const productName = (sale.products?.name || sale.product_name || 'Product').substring(0, 20);
+                const customerName = (sale.customer_name || 'Walk-in').substring(0, 15);
+                const reason = (sale.reason || 'Sale').substring(0, 15);
+                
+                doc.setFontSize(9);
+                doc.text(time, 22, y);
+                doc.text(customerName, 40, y);
+                doc.text(productName, 80, y);
+                doc.text(sale.quantity?.toString() || '0', 115, y);
+                doc.text(`₦${(sale.total_price || 0).toLocaleString()}`, 125, y);
+                doc.text(reason, 145, y);
+                y += 8;
+            });
+        }
+        
+        static addTopProductsSection(doc, topProducts) {
+            doc.addPage();
+            
+            doc.setFontSize(14);
+            doc.setTextColor(0, 75, 147);
+            doc.text('TOP PERFORMING PRODUCTS', 20, 20);
+            
+            if (topProducts.length === 0) {
+                doc.setFontSize(11);
+                doc.setTextColor(100, 100, 100);
+                doc.text('No product data available', 20, 30);
+                return;
+            }
+            
+            // Table header
+            doc.setFontSize(10);
+            doc.setTextColor(255, 255, 255);
+            doc.setFillColor(0, 75, 147);
+            doc.rect(20, 30, 125, 8, 'F');
+            doc.text('Product', 22, 36);
+            doc.text('Stock', 80, 36);
+            doc.text('Sold Today', 100, 36);
+            doc.text('Value', 120, 36);
+            doc.text('Status', 140, 36);
+            
+            // Product rows
+            doc.setTextColor(0, 0, 0);
+            let y = 40;
+            
+            topProducts.slice(0, 10).forEach(product => {
+                if (y > 180) {
+                    doc.addPage();
+                    y = 20;
+                    // Add header for new page
+                    doc.setFontSize(10);
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFillColor(0, 75, 147);
+                    doc.rect(20, y, 125, 8, 'F');
+                    doc.text('Product', 22, y + 6);
+                    doc.text('Stock', 80, y + 6);
+                    doc.text('Sold Today', 100, y + 6);
+                    doc.text('Value', 120, y + 6);
+                    doc.text('Status', 140, y + 6);
+                    y += 15;
+                }
+                
+                const status = product.current_qty <= CEO_CONFIG.STOCK_CRITICAL ? 'CRITICAL' :
+                              product.current_qty <= CEO_CONFIG.STOCK_WARNING ? 'LOW' : 'GOOD';
+                const stockValue = (product.current_qty || 0) * (product.retail_price || 0);
+                
+                doc.setFontSize(9);
+                doc.text(product.name.substring(0, 25), 22, y);
+                doc.text(product.current_qty.toString(), 80, y);
+                doc.text(product.sold_today?.toString() || '0', 100, y);
+                doc.text(`₦${stockValue.toLocaleString()}`, 120, y);
+                doc.text(status, 140, y);
+                y += 8;
+            });
+        }
+        
+        static addStockSection(doc, stock) {
+            doc.addPage();
+            
+            doc.setFontSize(14);
+            doc.setTextColor(0, 75, 147);
+            doc.text('STOCK STATUS ANALYSIS', 20, 20);
+            
+            doc.setFontSize(11);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Total Stock Value: ₦${stock.totalStockValue?.toLocaleString() || '0'}`, 20, 30);
+            doc.text(`Critical Items: ${stock.criticalCount || 0}`, 20, 37);
+            doc.text(`Warning Items: ${stock.warningCount || 0}`, 20, 44);
+            doc.text(`Good Items: ${stock.goodCount || 0}`, 20, 51);
+            
+            // Critical items list
+            if (stock.critical.length > 0) {
+                doc.setFontSize(12);
+                doc.setTextColor(255, 0, 0);
+                doc.text('URGENT - NEEDS IMMEDIATE RESTOCK:', 20, 65);
+                
+                doc.setFontSize(10);
+                doc.setTextColor(0, 0, 0);
+                let y = 75;
+                stock.critical.slice(0, 10).forEach(item => {
+                    doc.text(`• ${item.name} - ${item.current_qty} units left (Min: ${item.min_qty || CEO_CONFIG.STOCK_WARNING})`, 25, y);
+                    y += 7;
+                });
+            }
+        }
+        
+        static addDebtsSection(doc, debts) {
+            doc.addPage();
+            
+            doc.setFontSize(14);
+            doc.setTextColor(0, 75, 147);
+            doc.text('OUTSTANDING DEBTS', 20, 20);
+            
+            if (debts.length === 0) {
+                doc.setFontSize(11);
+                doc.setTextColor(100, 100, 100);
+                doc.text('No outstanding debts', 20, 30);
+                return;
+            }
+            
+            // Table header
+            doc.setFontSize(10);
+            doc.setTextColor(255, 255, 255);
+            doc.setFillColor(220, 53, 69);
+            doc.rect(20, 30, 125, 8, 'F');
+            doc.text('Customer', 22, 36);
+            doc.text('Amount Owing', 80, 36);
+            doc.text('Days', 110, 36);
+            doc.text('Total Due', 130, 36);
+            doc.text('Contact', 150, 36);
+            
+            // Debt rows
+            doc.setTextColor(0, 0, 0);
+            let y = 40;
+            
+            debts.slice(0, 15).forEach(debt => {
+                if (y > 180) {
+                    doc.addPage();
+                    y = 20;
+                    // Add header for new page
+                    doc.setFontSize(10);
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFillColor(220, 53, 69);
+                    doc.rect(20, y, 125, 8, 'F');
+                    doc.text('Customer', 22, y + 6);
+                    doc.text('Amount Owing', 80, y + 6);
+                    doc.text('Days', 110, y + 6);
+                    doc.text('Total Due', 130, y + 6);
+                    doc.text('Contact', 150, y + 6);
+                    y += 15;
+                }
+                
+                const totalDue = debt.total_due || debt.amount_owing || 0;
+                const customerName = (debt.customer_name || 'Customer').substring(0, 20);
+                const contact = (debt.customer_phone || 'N/A').substring(0, 10);
+                
+                doc.setFontSize(9);
+                doc.text(customerName, 22, y);
+                doc.text(`₦${(debt.amount_owing || 0).toLocaleString()}`, 80, y);
+                doc.text((debt.days_owing || 0).toString(), 110, y);
+                doc.text(`₦${totalDue.toLocaleString()}`, 130, y);
+                doc.text(contact, 150, y);
+                y += 8;
+            });
+        }
+        
+        static addCustomersSection(doc, customers) {
+            doc.addPage();
+            
+            doc.setFontSize(14);
+            doc.setTextColor(0, 75, 147);
+            doc.text('TOP CUSTOMER INSIGHTS', 20, 20);
+            
+            if (customers.length === 0) {
+                doc.setFontSize(11);
+                doc.setTextColor(100, 100, 100);
+                doc.text('No customer data available', 20, 30);
+                return;
+            }
+            
+            // Table header
+            doc.setFontSize(10);
+            doc.setTextColor(255, 255, 255);
+            doc.setFillColor(76, 175, 80);
+            doc.rect(20, 30, 125, 8, 'F');
+            doc.text('Customer', 22, 36);
+            doc.text('Total Spent', 80, 36);
+            doc.text('Purchases', 110, 36);
+            doc.text('Avg Purchase', 130, 36);
+            doc.text('Last Purchase', 150, 36);
+            
+            // Customer rows
+            doc.setTextColor(0, 0, 0);
+            let y = 40;
+            
+            customers.slice(0, 10).forEach(customer => {
+                if (y > 180) {
+                    doc.addPage();
+                    y = 20;
+                    // Add header for new page
+                    doc.setFontSize(10);
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFillColor(76, 175, 80);
+                    doc.rect(20, y, 125, 8, 'F');
+                    doc.text('Customer', 22, y + 6);
+                    doc.text('Total Spent', 80, y + 6);
+                    doc.text('Purchases', 110, y + 6);
+                    doc.text('Avg Purchase', 130, y + 6);
+                    doc.text('Last Purchase', 150, y + 6);
+                    y += 15;
+                }
+                
+                const lastPurchase = customer.last_purchase ? 
+                    new Date(customer.last_purchase).toLocaleDateString() : 'Never';
+                const customerName = customer.name.substring(0, 20);
+                
+                doc.setFontSize(9);
+                doc.text(customerName, 22, y);
+                doc.text(`₦${customer.total_spent?.toLocaleString() || '0'}`, 80, y);
+                doc.text(customer.purchase_count?.toString() || '0', 110, y);
+                doc.text(`₦${Math.round(customer.avg_purchase || 0).toLocaleString()}`, 130, y);
+                doc.text(lastPurchase, 150, y);
+                y += 8;
+            });
+        }
+        
+        static addFooter(doc, date) {
+            const pageCount = doc.internal.getNumberOfPages();
+            
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                
+                // Footer separator
+                doc.setDrawColor(200, 200, 200);
+                doc.line(20, 195, 145, 195);
+                
+                // Footer text
+                doc.setFontSize(8);
+                doc.setTextColor(100, 100, 100);
+                doc.text(CEO_CONFIG.COMPANY_ADDRESS, 105, 200, null, null, 'center');
+                doc.text(`Page ${i} of ${pageCount} | Generated ${date.toLocaleDateString()}`, 105, 205, null, null, 'center');
+                doc.text('Confidential - For CEO Use Only', 105, 210, null, null, 'center');
+            }
+        }
+    }
+    
+    // Make PDFGenerator available globally
+    window.PDFGenerator = PDFGenerator;
+    </script>
 </body>
-
 </html>
