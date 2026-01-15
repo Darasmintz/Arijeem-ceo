@@ -10,7 +10,7 @@ class CEODashboard {
         this.updateInterval = null;
         this.scrollInterval = null;
         this.currentScrollPosition = 0;
-        this.scrollSpeed = 1; // pixels per interval
+        this.scrollSpeed = 1;
         this.init();
     }
     
@@ -60,15 +60,9 @@ class CEODashboard {
             refreshBtn.onclick = () => this.forceRefreshData();
         }
         
-        const pdfBtn = document.querySelector('.btn-pdf');
-        if (pdfBtn) {
-            pdfBtn.onclick = () => this.generatePDFReport();
-        }
-        
         // Add manual refresh button event
         const manualRefreshBtn = document.getElementById('manualRefreshBtn');
         if (!manualRefreshBtn) {
-            // Add refresh button to header
             setTimeout(() => {
                 this.addRefreshButton();
             }, 1000);
@@ -117,16 +111,15 @@ class CEODashboard {
         
         this.scrollInterval = setInterval(() => {
             this.scrollTopProducts();
-        }, 50); // Scroll every 50ms for smooth movement
+        }, 50);
     }
     
     scrollTopProducts() {
-        const tableBody = document.getElementById('topProductsTableBody');
         const tableContainer = document.querySelector('#topProductsTable').closest('.table-container');
         
-        if (tableBody && tableContainer && tableBody.scrollHeight > tableContainer.clientHeight) {
+        if (tableContainer) {
             // If we've scrolled to the bottom, reset to top
-            if (this.currentScrollPosition >= (tableBody.scrollHeight - tableContainer.clientHeight)) {
+            if (this.currentScrollPosition >= (tableContainer.scrollHeight - tableContainer.clientHeight)) {
                 this.currentScrollPosition = 0;
                 tableContainer.scrollTop = 0;
             } else {
@@ -140,12 +133,11 @@ class CEODashboard {
         // Clear existing interval
         if (this.updateInterval) clearInterval(this.updateInterval);
         
-        // Update every 30 seconds when on dashboard
         this.updateInterval = setInterval(() => {
             if (this.currentCEO && document.getElementById('dashboardScreen').style.display !== 'none') {
-                this.loadBusinessData(true); // Silent update
+                this.loadBusinessData(true);
             }
-        }, 30000); // 30 seconds
+        }, 30000);
     }
     
     setupAutoReport() {
@@ -173,7 +165,7 @@ class CEODashboard {
         
         this.autoSyncTimer = setInterval(() => {
             if (this.currentCEO && this.businessData) {
-                this.loadBusinessData(true); // Silent sync
+                this.loadBusinessData(true);
             }
         }, CEO_CONFIG.SYNC_INTERVAL);
     }
@@ -196,7 +188,6 @@ class CEODashboard {
             `;
             document.body.appendChild(msg);
             
-            // Auto-remove after display time
             setTimeout(() => {
                 if (msg.parentElement) {
                     msg.remove();
@@ -219,7 +210,6 @@ class CEODashboard {
             
             this.showMessage('Forcing data refresh from main system...', 'info');
             
-            // Force database refresh
             const refreshed = await window.ceoDB.forceRefresh();
             
             if (refreshed) {
@@ -409,7 +399,6 @@ class CEODashboard {
             document.getElementById('dashboardTitle').textContent = `👑 ${this.currentCEO.name}'s BUSINESS VIEW`;
             this.updateWelcomeMessage();
             this.addRefreshButton();
-            // Start auto-scroll when dashboard is shown
             setTimeout(() => this.startAutoScroll(), 1000);
         }
     }
@@ -429,7 +418,6 @@ class CEODashboard {
                 `${greeting}! | Updated: ${now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
         }
         
-        // Update connection status
         this.updateConnectionStatus();
     }
     
@@ -490,7 +478,6 @@ class CEODashboard {
             
             this.businessData = await window.ceoDB.getBusinessData();
             
-            // Update dashboard with new data
             this.updateDashboard();
             this.updateWelcomeMessage();
             this.updateDataFreshnessIndicator();
@@ -513,7 +500,6 @@ class CEODashboard {
                 this.showMessage('Failed to load data. Using cached information.', 'error');
             }
             
-            // Try to use existing data or get fallback
             if (!this.businessData) {
                 this.businessData = window.ceoDB.getFallbackData();
                 this.updateDashboard();
@@ -531,7 +517,6 @@ class CEODashboard {
         if (loadingEl) {
             loadingEl.style.display = show ? 'block' : 'none';
         } else if (show) {
-            // Create loading indicator
             const indicator = document.createElement('div');
             indicator.id = 'loadingIndicator';
             indicator.innerHTML = `
@@ -546,7 +531,6 @@ class CEODashboard {
             `;
             document.body.appendChild(indicator);
             
-            // Add CSS for spinner
             if (!document.querySelector('#loading-spinner-css')) {
                 const style = document.createElement('style');
                 style.id = 'loading-spinner-css';
@@ -573,7 +557,6 @@ class CEODashboard {
     updateDataFreshnessIndicator() {
         const freshnessEl = document.getElementById('dataFreshness');
         if (!freshnessEl) {
-            // Add freshness indicator to header
             const headerLeft = document.querySelector('.header-left');
             if (headerLeft) {
                 const freshness = document.createElement('div');
@@ -614,32 +597,16 @@ class CEODashboard {
         
         console.log(`📊 Updating dashboard with ${sales.length} sales, ${products.length} products`);
         
-        // Update big numbers
         this.updateBigNumbers(summary, salesAnalysis);
-        
-        // Update stock alert
         this.updateStockAlert(summary, stock);
-        
-        // Update sales analysis
         this.updateSalesAnalysis(salesAnalysis);
-        
-        // Update tables
         this.updateSalesTable(sales);
         this.updateTopProductsTable(topProducts);
         this.updateStockTable(products);
         this.updateDebtsTable(debts);
         this.updateCustomersTable(customers);
-        
-        // Update totals
-        this.updateSectionTotals(summary);
-        
-        // Update connection status
         this.updateConnectionStatus();
-        
-        // Update last update time
         this.updateLastUpdateTime();
-        
-        // Restart auto-scroll after updating table
         setTimeout(() => this.startAutoScroll(), 100);
     }
     
@@ -841,7 +808,6 @@ class CEODashboard {
         
         let html = '';
         
-        // Show all products with auto-scroll
         topProducts.forEach((product, index) => {
             const status = product.current_qty <= CEO_CONFIG.STOCK_CRITICAL ? 'critical' :
                           product.current_qty <= CEO_CONFIG.STOCK_WARNING ? 'warning' : 'good';
@@ -850,7 +816,6 @@ class CEODashboard {
             const stockValue = (product.current_qty || 0) * (product.retail_price || 0);
             const rank = index + 1;
             
-            // Add ranking badge
             let rankBadge = '';
             if (rank <= 3) {
                 rankBadge = `<span class="rank-badge rank-${rank}">${rank}</span>`;
@@ -869,7 +834,6 @@ class CEODashboard {
             `;
         });
         
-        // Add more rows to ensure smooth scrolling if less than 15 products
         if (topProducts.length < 15) {
             for (let i = topProducts.length; i < 15; i++) {
                 html += `
@@ -881,25 +845,6 @@ class CEODashboard {
         }
         
         tbody.innerHTML = html;
-        
-        // Add auto-scroll indicator
-        const tableContainer = document.querySelector('#topProductsTable').closest('.table-container');
-        if (tableContainer && !tableContainer.querySelector('.auto-scroll-indicator')) {
-            const indicator = document.createElement('div');
-            indicator.className = 'auto-scroll-indicator';
-            indicator.innerHTML = '🔄 Auto-scrolling';
-            indicator.style.position = 'absolute';
-            indicator.style.bottom = '10px';
-            indicator.style.right = '10px';
-            indicator.style.background = 'rgba(59, 130, 246, 0.9)';
-            indicator.style.color = 'white';
-            indicator.style.padding = '4px 8px';
-            indicator.style.borderRadius = '4px';
-            indicator.style.fontSize = '0.8rem';
-            indicator.style.zIndex = '10';
-            tableContainer.style.position = 'relative';
-            tableContainer.appendChild(indicator);
-        }
     }
     
     updateStockTable(products) {
@@ -1018,78 +963,168 @@ class CEODashboard {
         tbody.innerHTML = html;
     }
     
-    // PDF REPORT GENERATION - FIXED
+    // PDF REPORT GENERATION - SIMPLIFIED VERSION THAT WORKS
     async generatePDFReport() {
-        if (!this.businessData) {
-            this.showMessage('Please wait for data to load', 'info');
-            return;
-        }
-        
-        this.showMessage('Generating PDF report...', 'info');
-        
         try {
-            const { summary, sales, products, debts, customers, topProducts, salesAnalysis, stock } = this.businessData;
-            const now = new Date();
+            if (!this.businessData) {
+                this.showMessage('Please wait for data to load', 'info');
+                return;
+            }
             
-            // Check if jsPDF is available
+            this.showMessage('Generating PDF report...', 'info');
+            
+            // Check if jsPDF is loaded
             if (typeof jspdf === 'undefined') {
-                // Load jsPDF dynamically
+                // Load jsPDF if not already loaded
                 await this.loadJSPDFLibrary();
             }
             
-            // Create PDF document
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({
+            // Get business data
+            const { summary, sales, products, debts, customers, topProducts, salesAnalysis, stock } = this.businessData;
+            const now = new Date();
+            
+            // Create PDF
+            const doc = new window.jspdf.jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
                 format: 'a5'
             });
             
-            // Set document properties
-            doc.setProperties({
-                title: `Arijeem Daily Report - ${now.toLocaleDateString()}`,
-                subject: 'CEO Business Dashboard Report',
-                author: 'Arijeem Enterprises',
-                creator: 'CEO Simple Dashboard v2.0'
+            // Add header
+            doc.setFontSize(20);
+            doc.setTextColor(0, 75, 147);
+            doc.text('ARIJEEM ENTERPRISES', 105, 15, null, null, 'center');
+            
+            doc.setFontSize(16);
+            doc.setTextColor(0, 0, 0);
+            doc.text('DAILY CEO REPORT', 105, 23, null, null, 'center');
+            
+            doc.setFontSize(12);
+            doc.setTextColor(100, 100, 100);
+            doc.text(now.toLocaleDateString(), 105, 30, null, null, 'center');
+            
+            // Add summary
+            doc.setFontSize(14);
+            doc.setTextColor(0, 75, 147);
+            doc.text('SUMMARY', 20, 45);
+            
+            doc.setFontSize(11);
+            doc.setTextColor(0, 0, 0);
+            
+            let y = 55;
+            const summaryItems = [
+                `Total Sales: ₦${summary.totalSales.toLocaleString()}`,
+                `Products Sold: ${summary.productsSold}`,
+                `Transactions: ${summary.transactionCount}`,
+                `Profit Margin: ${summary.profitMargin}%`,
+                `Outstanding Debt: ₦${summary.totalDebt.toLocaleString()}`,
+                `Active Staff: ${summary.staffCount}`,
+                `Stock Status: ${summary.stockStatus.toUpperCase()}`
+            ];
+            
+            summaryItems.forEach(item => {
+                doc.text(item, 25, y);
+                y += 8;
             });
             
-            // Add header
-            this.addPDFHeader(doc, now);
-            
-            // Add summary section
-            this.addPDFSummarySection(doc, summary, salesAnalysis);
-            
             // Add sales section
-            this.addPDFSalesSection(doc, sales);
+            if (sales.length > 0) {
+                doc.addPage();
+                y = 20;
+                
+                doc.setFontSize(14);
+                doc.setTextColor(0, 75, 147);
+                doc.text('TODAY\'S SALES', 20, y);
+                y += 10;
+                
+                doc.setFontSize(10);
+                sales.slice(0, 15).forEach(sale => {
+                    if (y > 180) {
+                        doc.addPage();
+                        y = 20;
+                    }
+                    
+                    const time = sale.time || new Date(sale.sale_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    const productName = (sale.products?.name || sale.product_name || 'Product').substring(0, 20);
+                    const amount = sale.total_price || 0;
+                    
+                    doc.text(`${time} - ${productName}`, 25, y);
+                    doc.text(`₦${amount.toLocaleString()}`, 130, y, null, null, 'right');
+                    y += 8;
+                });
+            }
             
             // Add top products section
-            this.addPDFTopProductsSection(doc, topProducts);
+            if (topProducts.length > 0) {
+                doc.addPage();
+                y = 20;
+                
+                doc.setFontSize(14);
+                doc.setTextColor(0, 75, 147);
+                doc.text('TOP PRODUCTS', 20, y);
+                y += 10;
+                
+                doc.setFontSize(10);
+                topProducts.slice(0, 10).forEach((product, index) => {
+                    if (y > 180) {
+                        doc.addPage();
+                        y = 20;
+                    }
+                    
+                    const stockValue = (product.current_qty || 0) * (product.retail_price || 0);
+                    
+                    doc.text(`${index + 1}. ${product.name.substring(0, 25)}`, 25, y);
+                    doc.text(`Stock: ${product.current_qty}`, 100, y);
+                    doc.text(`Value: ₦${stockValue.toLocaleString()}`, 130, y, null, null, 'right');
+                    y += 8;
+                });
+            }
             
-            // Add stock section
-            this.addPDFStockSection(doc, stock);
+            // Add stock alert section
+            if (stock.critical.length > 0) {
+                doc.addPage();
+                y = 20;
+                
+                doc.setFontSize(14);
+                doc.setTextColor(255, 0, 0);
+                doc.text('URGENT STOCK ALERTS', 20, y);
+                y += 10;
+                
+                doc.setFontSize(10);
+                doc.setTextColor(0, 0, 0);
+                stock.critical.slice(0, 10).forEach(item => {
+                    doc.text(`• ${item.name} - ${item.current_qty} units left`, 25, y);
+                    y += 7;
+                });
+            }
             
             // Add debts section
             if (debts.length > 0) {
-                this.addPDFDebtsSection(doc, debts);
+                doc.addPage();
+                y = 20;
+                
+                doc.setFontSize(14);
+                doc.setTextColor(0, 75, 147);
+                doc.text('OUTSTANDING DEBTS', 20, y);
+                y += 10;
+                
+                doc.setFontSize(10);
+                debts.slice(0, 10).forEach(debt => {
+                    const totalDue = debt.total_due || debt.amount_owing || 0;
+                    doc.text(`${debt.customer_name || 'Customer'}: ₦${totalDue.toLocaleString()}`, 25, y);
+                    y += 8;
+                });
             }
             
-            // Add customer insights
-            if (customers.length > 0) {
-                this.addPDFCustomersSection(doc, customers);
-            }
-            
-            // Add footer
-            this.addPDFFooter(doc, now);
-            
-            // Save the PDF
+            // Save PDF
             const filename = `Arijeem-Report-${now.toISOString().split('T')[0]}.pdf`;
             doc.save(filename);
             
-            this.showMessage(`✅ PDF report "${filename}" generated successfully!`, 'success');
+            this.showMessage(`✅ PDF report generated: ${filename}`, 'success');
             
         } catch (error) {
-            console.error('❌ PDF generation error:', error);
-            this.showMessage('Failed to generate PDF report. Please try again.', 'error');
+            console.error('PDF Generation Error:', error);
+            this.showMessage(`Failed to generate PDF: ${error.message}`, 'error');
         }
     }
     
@@ -1100,391 +1135,12 @@ class CEODashboard {
                 return;
             }
             
-            // Create script element
             const script = document.createElement('script');
             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-            
-            script.onload = () => {
-                console.log('✅ jsPDF library loaded successfully');
-                resolve();
-            };
-            
-            script.onerror = () => {
-                console.error('❌ Failed to load jsPDF library');
-                reject(new Error('Failed to load PDF library'));
-            };
-            
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error('Failed to load jsPDF'));
             document.head.appendChild(script);
         });
-    }
-    
-    addPDFHeader(doc, date) {
-        // Company Header
-        doc.setFontSize(20);
-        doc.setTextColor(0, 75, 147); // Blue color
-        doc.text('ARIJEEM ENTERPRISES', 105, 15, null, null, 'center');
-        
-        // Report Title
-        doc.setFontSize(16);
-        doc.setTextColor(0, 0, 0);
-        doc.text('DAILY CEO REPORT', 105, 23, null, null, 'center');
-        
-        // Date
-        doc.setFontSize(12);
-        doc.setTextColor(100, 100, 100);
-        const dateStr = date.toLocaleDateString('en-US', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-        });
-        doc.text(dateStr, 105, 30, null, null, 'center');
-        
-        // Separator line
-        doc.setDrawColor(200, 200, 200);
-        doc.line(20, 35, 145, 35);
-        
-        // Timestamp
-        doc.setFontSize(10);
-        doc.text(`Generated: ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`, 20, 40);
-        doc.text('Page 1', 145, 40, null, null, 'right');
-    }
-    
-    addPDFSummarySection(doc, summary, salesAnalysis) {
-        doc.setFontSize(14);
-        doc.setTextColor(0, 75, 147);
-        doc.text('EXECUTIVE SUMMARY', 20, 50);
-        
-        doc.setDrawColor(200, 200, 200);
-        doc.line(20, 52, 145, 52);
-        
-        doc.setFontSize(11);
-        doc.setTextColor(0, 0, 0);
-        
-        const summaryData = [
-            ['Total Sales', `₦${summary.totalSales.toLocaleString()}`],
-            ['Products Sold', summary.productsSold.toLocaleString()],
-            ['Transactions', summary.transactionCount],
-            ['Average Sale', `₦${Math.round(salesAnalysis?.averageSale || 0).toLocaleString()}`],
-            ['Total Profit', `₦${Math.round(summary.totalProfit || 0).toLocaleString()}`],
-            ['Profit Margin', `${summary.profitMargin}%`],
-            ['Outstanding Debt', `₦${summary.totalDebt.toLocaleString()}`],
-            ['Active Staff', summary.staffCount],
-            ['Active Customers', summary.activeCustomers],
-            ['Stock Status', summary.stockStatus.toUpperCase()]
-        ];
-        
-        let y = 60;
-        summaryData.forEach(([label, value], index) => {
-            if (index % 2 === 0) {
-                doc.text(label, 25, y);
-                doc.text(value, 80, y);
-            } else {
-                doc.text(label, 90, y);
-                doc.text(value, 140, y, null, null, 'right');
-                y += 8;
-            }
-        });
-        
-        if (summaryData.length % 2 !== 0) {
-            y += 8;
-        }
-        
-        doc.setDrawColor(200, 200, 200);
-        doc.line(20, y + 5, 145, y + 5);
-    }
-    
-    addPDFSalesSection(doc, sales) {
-        doc.addPage();
-        
-        doc.setFontSize(14);
-        doc.setTextColor(0, 75, 147);
-        doc.text('TODAY\'S SALES DETAILS', 20, 20);
-        
-        if (sales.length === 0) {
-            doc.setFontSize(11);
-            doc.setTextColor(100, 100, 100);
-            doc.text('No sales recorded today', 20, 30);
-            return;
-        }
-        
-        // Table header
-        doc.setFontSize(10);
-        doc.setTextColor(255, 255, 255);
-        doc.setFillColor(0, 75, 147);
-        doc.rect(20, 30, 125, 8, 'F');
-        doc.text('Time', 22, 36);
-        doc.text('Customer', 40, 36);
-        doc.text('Product', 80, 36);
-        doc.text('Qty', 115, 36);
-        doc.text('Amount', 125, 36);
-        doc.text('Reason', 145, 36);
-        
-        // Sales rows
-        doc.setTextColor(0, 0, 0);
-        let y = 40;
-        
-        sales.slice(0, 20).forEach(sale => {
-            if (y > 180) {
-                doc.addPage();
-                y = 20;
-                // Add header for new page
-                doc.setFontSize(10);
-                doc.setTextColor(255, 255, 255);
-                doc.setFillColor(0, 75, 147);
-                doc.rect(20, y, 125, 8, 'F');
-                doc.text('Time', 22, y + 6);
-                doc.text('Customer', 40, y + 6);
-                doc.text('Product', 80, y + 6);
-                doc.text('Qty', 115, y + 6);
-                doc.text('Amount', 125, y + 6);
-                doc.text('Reason', 145, y + 6);
-                y += 15;
-            }
-            
-            const time = sale.time || new Date(sale.sale_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            const productName = (sale.products?.name || sale.product_name || 'Product').substring(0, 20);
-            const customerName = (sale.customer_name || 'Walk-in').substring(0, 15);
-            const reason = (sale.reason || 'Sale').substring(0, 15);
-            
-            doc.setFontSize(9);
-            doc.text(time, 22, y);
-            doc.text(customerName, 40, y);
-            doc.text(productName, 80, y);
-            doc.text(sale.quantity?.toString() || '0', 115, y);
-            doc.text(`₦${(sale.total_price || 0).toLocaleString()}`, 125, y);
-            doc.text(reason, 145, y);
-            y += 8;
-        });
-    }
-    
-    addPDFTopProductsSection(doc, topProducts) {
-        doc.addPage();
-        
-        doc.setFontSize(14);
-        doc.setTextColor(0, 75, 147);
-        doc.text('TOP PERFORMING PRODUCTS', 20, 20);
-        
-        if (topProducts.length === 0) {
-            doc.setFontSize(11);
-            doc.setTextColor(100, 100, 100);
-            doc.text('No product data available', 20, 30);
-            return;
-        }
-        
-        // Table header
-        doc.setFontSize(10);
-        doc.setTextColor(255, 255, 255);
-        doc.setFillColor(0, 75, 147);
-        doc.rect(20, 30, 125, 8, 'F');
-        doc.text('Product', 22, 36);
-        doc.text('Stock', 80, 36);
-        doc.text('Sold Today', 100, 36);
-        doc.text('Value', 120, 36);
-        doc.text('Status', 140, 36);
-        
-        // Product rows
-        doc.setTextColor(0, 0, 0);
-        let y = 40;
-        
-        topProducts.slice(0, 10).forEach(product => {
-            if (y > 180) {
-                doc.addPage();
-                y = 20;
-                // Add header for new page
-                doc.setFontSize(10);
-                doc.setTextColor(255, 255, 255);
-                doc.setFillColor(0, 75, 147);
-                doc.rect(20, y, 125, 8, 'F');
-                doc.text('Product', 22, y + 6);
-                doc.text('Stock', 80, y + 6);
-                doc.text('Sold Today', 100, y + 6);
-                doc.text('Value', 120, y + 6);
-                doc.text('Status', 140, y + 6);
-                y += 15;
-            }
-            
-            const status = product.current_qty <= CEO_CONFIG.STOCK_CRITICAL ? 'CRITICAL' :
-                          product.current_qty <= CEO_CONFIG.STOCK_WARNING ? 'LOW' : 'GOOD';
-            const stockValue = (product.current_qty || 0) * (product.retail_price || 0);
-            
-            doc.setFontSize(9);
-            doc.text(product.name.substring(0, 25), 22, y);
-            doc.text(product.current_qty.toString(), 80, y);
-            doc.text(product.sold_today?.toString() || '0', 100, y);
-            doc.text(`₦${stockValue.toLocaleString()}`, 120, y);
-            doc.text(status, 140, y);
-            y += 8;
-        });
-    }
-    
-    addPDFStockSection(doc, stock) {
-        doc.addPage();
-        
-        doc.setFontSize(14);
-        doc.setTextColor(0, 75, 147);
-        doc.text('STOCK STATUS ANALYSIS', 20, 20);
-        
-        doc.setFontSize(11);
-        doc.setTextColor(0, 0, 0);
-        doc.text(`Total Stock Value: ₦${stock.totalStockValue?.toLocaleString() || '0'}`, 20, 30);
-        doc.text(`Critical Items: ${stock.criticalCount || 0}`, 20, 37);
-        doc.text(`Warning Items: ${stock.warningCount || 0}`, 20, 44);
-        doc.text(`Good Items: ${stock.goodCount || 0}`, 20, 51);
-        
-        // Critical items list
-        if (stock.critical.length > 0) {
-            doc.setFontSize(12);
-            doc.setTextColor(255, 0, 0);
-            doc.text('URGENT - NEEDS IMMEDIATE RESTOCK:', 20, 65);
-            
-            doc.setFontSize(10);
-            doc.setTextColor(0, 0, 0);
-            let y = 75;
-            stock.critical.slice(0, 10).forEach(item => {
-                doc.text(`• ${item.name} - ${item.current_qty} units left (Min: ${item.min_qty || CEO_CONFIG.STOCK_WARNING})`, 25, y);
-                y += 7;
-            });
-        }
-    }
-    
-    addPDFDebtsSection(doc, debts) {
-        doc.addPage();
-        
-        doc.setFontSize(14);
-        doc.setTextColor(0, 75, 147);
-        doc.text('OUTSTANDING DEBTS', 20, 20);
-        
-        if (debts.length === 0) {
-            doc.setFontSize(11);
-            doc.setTextColor(100, 100, 100);
-            doc.text('No outstanding debts', 20, 30);
-            return;
-        }
-        
-        // Table header
-        doc.setFontSize(10);
-        doc.setTextColor(255, 255, 255);
-        doc.setFillColor(220, 53, 69);
-        doc.rect(20, 30, 125, 8, 'F');
-        doc.text('Customer', 22, 36);
-        doc.text('Amount Owing', 80, 36);
-        doc.text('Days', 110, 36);
-        doc.text('Total Due', 130, 36);
-        doc.text('Contact', 150, 36);
-        
-        // Debt rows
-        doc.setTextColor(0, 0, 0);
-        let y = 40;
-        
-        debts.slice(0, 15).forEach(debt => {
-            if (y > 180) {
-                doc.addPage();
-                y = 20;
-                // Add header for new page
-                doc.setFontSize(10);
-                doc.setTextColor(255, 255, 255);
-                doc.setFillColor(220, 53, 69);
-                doc.rect(20, y, 125, 8, 'F');
-                doc.text('Customer', 22, y + 6);
-                doc.text('Amount Owing', 80, y + 6);
-                doc.text('Days', 110, y + 6);
-                doc.text('Total Due', 130, y + 6);
-                doc.text('Contact', 150, y + 6);
-                y += 15;
-            }
-            
-            const totalDue = debt.total_due || debt.amount_owing || 0;
-            const customerName = (debt.customer_name || 'Customer').substring(0, 20);
-            const contact = (debt.customer_phone || 'N/A').substring(0, 10);
-            
-            doc.setFontSize(9);
-            doc.text(customerName, 22, y);
-            doc.text(`₦${(debt.amount_owing || 0).toLocaleString()}`, 80, y);
-            doc.text((debt.days_owing || 0).toString(), 110, y);
-            doc.text(`₦${totalDue.toLocaleString()}`, 130, y);
-            doc.text(contact, 150, y);
-            y += 8;
-        });
-    }
-    
-    addPDFCustomersSection(doc, customers) {
-        doc.addPage();
-        
-        doc.setFontSize(14);
-        doc.setTextColor(0, 75, 147);
-        doc.text('TOP CUSTOMER INSIGHTS', 20, 20);
-        
-        if (customers.length === 0) {
-            doc.setFontSize(11);
-            doc.setTextColor(100, 100, 100);
-            doc.text('No customer data available', 20, 30);
-            return;
-        }
-        
-        // Table header
-        doc.setFontSize(10);
-        doc.setTextColor(255, 255, 255);
-        doc.setFillColor(76, 175, 80);
-        doc.rect(20, 30, 125, 8, 'F');
-        doc.text('Customer', 22, 36);
-        doc.text('Total Spent', 80, 36);
-        doc.text('Purchases', 110, 36);
-        doc.text('Avg Purchase', 130, 36);
-        doc.text('Last Purchase', 150, 36);
-        
-        // Customer rows
-        doc.setTextColor(0, 0, 0);
-        let y = 40;
-        
-        customers.slice(0, 10).forEach(customer => {
-            if (y > 180) {
-                doc.addPage();
-                y = 20;
-                // Add header for new page
-                doc.setFontSize(10);
-                doc.setTextColor(255, 255, 255);
-                doc.setFillColor(76, 175, 80);
-                doc.rect(20, y, 125, 8, 'F');
-                doc.text('Customer', 22, y + 6);
-                doc.text('Total Spent', 80, y + 6);
-                doc.text('Purchases', 110, y + 6);
-                doc.text('Avg Purchase', 130, y + 6);
-                doc.text('Last Purchase', 150, y + 6);
-                y += 15;
-            }
-            
-            const lastPurchase = customer.last_purchase ? 
-                new Date(customer.last_purchase).toLocaleDateString() : 'Never';
-            const customerName = customer.name.substring(0, 20);
-            
-            doc.setFontSize(9);
-            doc.text(customerName, 22, y);
-            doc.text(`₦${customer.total_spent?.toLocaleString() || '0'}`, 80, y);
-            doc.text(customer.purchase_count?.toString() || '0', 110, y);
-            doc.text(`₦${Math.round(customer.avg_purchase || 0).toLocaleString()}`, 130, y);
-            doc.text(lastPurchase, 150, y);
-            y += 8;
-        });
-    }
-    
-    addPDFFooter(doc, date) {
-        const pageCount = doc.internal.getNumberOfPages();
-        
-        for (let i = 1; i <= pageCount; i++) {
-            doc.setPage(i);
-            
-            // Footer separator
-            doc.setDrawColor(200, 200, 200);
-            doc.line(20, 195, 145, 195);
-            
-            // Footer text
-            doc.setFontSize(8);
-            doc.setTextColor(100, 100, 100);
-            doc.text(CEO_CONFIG.COMPANY_ADDRESS, 105, 200, null, null, 'center');
-            doc.text(`Page ${i} of ${pageCount} | Generated ${date.toLocaleDateString()}`, 105, 205, null, null, 'center');
-            doc.text('Confidential - For CEO Use Only', 105, 210, null, null, 'center');
-        }
     }
     
     // LOGOUT
@@ -1495,7 +1151,6 @@ class CEODashboard {
             this.currentCEO = null;
             this.businessData = null;
             
-            // Clear timers
             if (this.autoReportTimer) clearInterval(this.autoReportTimer);
             if (this.autoSyncTimer) clearInterval(this.autoSyncTimer);
             if (this.updateInterval) clearInterval(this.updateInterval);
