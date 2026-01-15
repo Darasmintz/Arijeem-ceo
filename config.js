@@ -6,7 +6,7 @@ const CEO_CONFIG = {
     
     // SYSTEM SETTINGS
     COMPANY: 'Arijeem Enterprises',
-    REPORT_TIME: '22:00', // 10:00 PM
+    REPORT_TIME: '20:00', // 8:00 PM
     
     // STOCK ALERTS
     STOCK_WARNING: 20,
@@ -27,7 +27,9 @@ const CEO_CONFIG = {
     TOP_PRODUCTS_LIMIT: 10,
     PDF_REPORT: true,
     COMPANY_ADDRESS: 'Lagos, Nigeria',
-    COMPANY_PHONE: '+234 904 589 0839'
+    COMPANY_PHONE: '+234 800 000 0000',
+    SHOW_CUSTOMER_DETAILS: true,
+    SHOW_SALES_REASONS: true
 };
 
 // Make globally available
