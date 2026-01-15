@@ -130,7 +130,9 @@
                     <p id="connectionStatus" class="connection-good">✅ Connected to main database</p>
                 </div>
                 <div class="header-right">
-                    <button onclick="window.ceoDashboard.generatePDFReport()" class="btn-pdf">📄 GENERATE PDF REPORT</button>
+                   <button onclick="window.ceoDashboard.generatePDFReport()" class="btn-pdf">
+    📄 DOWNLOAD PDF REPORT
+</button>
                     <button onclick="window.ceoDashboard.loadBusinessData()" class="btn-secondary">🔄 REFRESH DATA</button>
                     <button onclick="window.ceoDashboard.logoutCEO()" class="btn-logout">LOGOUT</button>
                 </div>
@@ -361,7 +363,9 @@
                     <p><strong>Generated automatically every day at 10:00 PM</strong></p>
                     <p>Report includes: Today's sales with reasons • Top 10 products • Current stock levels • Financial summary • Outstanding debts • Customer insights</p>
                     <p><strong>A5 Format PDF</strong> - Professional, printable report</p>
-                    <button onclick="window.ceoDashboard.generatePDFReport()" class="btn-primary">📥 GENERATE TODAY'S PDF REPORT</button>
+                    <button onclick="window.ceoDashboard.generatePDFReport()" class="btn-primary">
+    📥 GENERATE TODAY'S PDF REPORT
+</button>
                 </div>
             </div>
             
@@ -380,4 +384,5 @@
     <script src="database.js"></script>
     <script src="script.js"></script>
 </body>
+
 </html>
