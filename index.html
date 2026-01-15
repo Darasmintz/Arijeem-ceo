@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arijeem CEO Simple View</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👑</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <!-- Create Account Screen (FIRST SCREEN) -->
+        <div id="createAccountScreen" class="screen">
+            <div class="card">
+                <div class="logo">👑 CEO ACCESS</div>
+                <h1>Create Your CEO Account</h1>
+                <p class="subtitle">One-time setup • Automatic daily reports • Read-only access</p>
+                
+                <div class="form">
+                    <div class="input-group">
+                        <label>Your Full Name</label>
+                        <input type="text" id="ceoName" placeholder="Chief Executive Officer" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Your Email Address</label>
+                        <input type="email" id="ceoEmail" placeholder="ceo@arijeem.com" required>
+                        <small>This will be your login email</small>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Your Phone Number</label>
+                        <input type="tel" id="ceoPhone" placeholder="0800 000 0000">
+                        <small>Optional - for report notifications</small>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Create Password</label>
+                        <input type="password" id="ceoPassword" placeholder="Choose a password" required>
+                        <small>Minimum 6 characters</small>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Confirm Password</label>
+                        <input type="password" id="ceoConfirmPassword" placeholder="Re-enter password" required>
+                    </div>
+                    
+                    <div class="terms">
+                        <input type="checkbox" id="agreeTerms" required>
+                        <label for="agreeTerms">
+                            I understand this is <strong>read-only access</strong> to view business data. 
+                            I cannot modify any records.
+                        </label>
+                    </div>
+                    
+                    <button onclick="window.ceoDashboard.createCEOAccount()" class="btn-primary">
+                        <span class="btn-icon">✅</span> CREATE ACCOUNT & ACCESS DASHBOARD
+                    </button>
+                    
+                    <div class="note-box">
+                        <div class="note-icon">📊</div>
+                        <div>
+                            <strong>After account creation:</strong>
+                            <p>• You will see live business data immediately</p>
+                            <p>• Daily report sent automatically at 10:00 PM</p>
+                            <p>• One login - access from anywhere in the world</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Add link to login screen -->
+                    <div style="text-align: center; margin-top: 20px;">
+                        <p>Already have an account? <a href="#" onclick="window.ceoDashboard.showLoginScreen(); return false;" style="color: var(--primary); text-decoration: none; font-weight: bold;">Click here to login</a></p>
+                    </div>
+                </div>
+                
+                <div class="footer">
+                    <p>Arijeem Enterprises • CEO Simple System v1.0</p>
+                    <p>Connected to main business database</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Login Screen (After account is created) -->
+        <div id="loginScreen" class="screen" style="display: none;">
+            <div class="card">
+                <div class="logo">👑 CEO ACCESS</div>
+                <h1>Welcome Back, CEO</h1>
+                <p class="subtitle">Access your business dashboard</p>
+                
+                <div class="form">
+                    <div class="input-group">
+                        <label>Your Email</label>
+                        <input type="email" id="loginEmail" placeholder="ceo@arijeem.com" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Your Password</label>
+                        <input type="password" id="loginPassword" placeholder="Your password" required>
+                    </div>
+                    
+                    <button onclick="window.ceoDashboard.loginCEO()" class="btn-primary">
+                        <span class="btn-icon">🔑</span> ACCESS DASHBOARD
+                    </button>
+                    
+                    <div class="login-help">
+                        <p><strong>Forgot password?</strong> Contact system administrator.</p>
+                        <p><strong>First time?</strong> Account should already be created.</p>
+                    </div>
+                    
+                    <!-- Add link to create account screen -->
+                    <div style="text-align: center; margin-top: 20px;">
+                        <p>Don't have an account? <a href="#" onclick="window.ceoDashboard.showCreateAccountScreen(); return false;" style="color: var(--primary); text-decoration: none; font-weight: bold;">Create one now</a></p>
+                    </div>
+                </div>
+                
+                <div class="footer">
+                    <p>Automatic daily report at 10:00 PM • Read-only access</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Dashboard Screen -->
+        <div id="dashboardScreen" class="screen" style="display: none;">
+            <!-- Header -->
+            <div class="dashboard-header">
+                <div class="header-left">
+                    <h1 id="dashboardTitle">👑 CEO BUSINESS VIEW</h1>
+                    <p id="welcomeMessage">Good morning! | Updated: <span id="updateTime">Just now</span></p>
+                    <p id="reportTime">Next report: Today, 10:00 PM</p>
+                    <p id="connectionStatus" class="connection-good">✅ Connected to main database</p>
+                </div>
+                <div class="header-right">
+                    <button onclick="window.ceoDashboard.generatePDFReport()" class="btn-pdf">📄 GENERATE PDF REPORT</button>
+                    <button onclick="window.ceoDashboard.loadBusinessData()" class="btn-secondary">🔄 REFRESH DATA</button>
+                    <button onclick="window.ceoDashboard.logoutCEO()" class="btn-logout">LOGOUT</button>
+                </div>
+            </div>
+            
+            <!-- Big Numbers Row -->
+            <div class="big-numbers-row">
+                <div class="big-number-card sales">
+                    <div class="big-icon">💰</div>
+                    <div class="big-number" id="totalSales">₦0</div>
+                    <div class="big-label">TODAY'S SALES</div>
+                    <div class="big-subtext" id="transactionCount">0 transactions</div>
+                </div>
+                
+                <div class="big-number-card products">
+                    <div class="big-icon">📦</div>
+                    <div class="big-number" id="productsSold">0</div>
+                    <div class="big-label">PRODUCTS SOLD</div>
+                    <div class="big-subtext" id="averageSale">Avg: ₦0</div>
+                </div>
+                
+                <div class="big-number-card staff">
+                    <div class="big-icon">👥</div>
+                    <div class="big-number" id="staffCount">0</div>
+                    <div class="big-label">ACTIVE STAFF</div>
+                    <div class="big-subtext" id="customerCount">0 customers</div>
+                </div>
+                
+                <div class="big-number-card debt">
+                    <div class="big-icon">💳</div>
+                    <div class="big-number" id="totalDebt">₦0</div>
+                    <div class="big-label">OUTSTANDING DEBT</div>
+                    <div class="big-subtext" id="profitMargin">Margin: 0%</div>
+                </div>
+            </div>
+            
+            <!-- Stock Alert -->
+            <div class="alert-box" id="stockAlert">
+                <div class="alert-icon">📊</div>
+                <div class="alert-content">
+                    <h3>STOCK STATUS: <span id="stockStatusText">Checking...</span></h3>
+                    <p id="stockMessage">Loading stock information from main system...</p>
+                    <div id="stockDetails" style="margin-top: 10px; font-size: 0.9rem;">
+                        <span id="criticalCount" class="stock-badge critical">0 critical</span>
+                        <span id="warningCount" class="stock-badge warning">0 warning</span>
+                        <span id="goodCount" class="stock-badge good">0 good</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sales Analysis -->
+            <div class="section">
+                <div class="section-header">
+                    <h2>📈 SALES ANALYSIS</h2>
+                    <div class="section-total" id="analysisTotal">Today's Metrics</div>
+                </div>
+                <div class="analysis-grid">
+                    <div class="analysis-card">
+                        <div class="analysis-icon">⏰</div>
+                        <div class="analysis-content">
+                            <h3>Peak Hour</h3>
+                            <p id="peakHour">--:--</p>
+                            <small id="peakHourAmount">₦0</small>
+                        </div>
+                    </div>
+                    <div class="analysis-card">
+                        <div class="analysis-icon">📊</div>
+                        <div class="analysis-content">
+                            <h3>Average Sale</h3>
+                            <p id="averageSaleAmount">₦0</p>
+                            <small>Per transaction</small>
+                        </div>
+                    </div>
+                    <div class="analysis-card">
+                        <div class="analysis-icon">🏷️</div>
+                        <div class="analysis-content">
+                            <h3>Top Reason</h3>
+                            <p id="topReason">--</p>
+                            <small id="reasonCount">0 sales</small>
+                        </div>
+                    </div>
+                    <div class="analysis-card">
+                        <div class="analysis-icon">💰</div>
+                        <div class="analysis-content">
+                            <h3>Profit Margin</h3>
+                            <p id="profitMarginPercent">0%</p>
+                            <small id="totalProfit">₦0 profit</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Today's Sales with Details -->
+            <div class="section">
+                <div class="section-header">
+                    <h2>📋 TODAY'S SALES DETAILS</h2>
+                    <div class="section-total" id="salesTotal">Total: ₦0</div>
+                </div>
+                <div class="table-container">
+                    <table id="salesTable">
+                        <thead>
+                            <tr>
+                                <th>TIME</th>
+                                <th>CUSTOMER</th>
+                                <th>PRODUCT</th>
+                                <th>QTY</th>
+                                <th>AMOUNT</th>
+                                <th>PAYMENT</th>
+                                <th>REASON</th>
+                                <th>PROFIT</th>
+                            </tr>
+                        </thead>
+                        <tbody id="salesTableBody">
+                            <tr><td colspan="8" style="text-align: center; padding: 30px;">Loading sales data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Top 10 Products -->
+            <div class="section">
+                <div class="section-header">
+                    <h2>🏆 TOP 10 PRODUCTS</h2>
+                    <div class="section-total" id="topProductsTotal">Showing 10</div>
+                </div>
+                <div class="table-container">
+                    <table id="topProductsTable">
+                        <thead>
+                            <tr>
+                                <th>PRODUCT</th>
+                                <th>CURRENT STOCK</th>
+                                <th>SOLD TODAY</th>
+                                <th>STOCK VALUE</th>
+                                <th>DAYS SUPPLY</th>
+                                <th>REORDER NEEDED</th>
+                                <th>STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="topProductsTableBody">
+                            <tr><td colspan="7" style="text-align: center; padding: 30px;">Loading top products...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Stock Overview -->
+            <div class="section">
+                <div class="section-header">
+                    <h2>📦 STOCK OVERVIEW</h2>
+                    <div class="section-total" id="stockTotal">Total Value: ₦0</div>
+                </div>
+                <div class="table-container">
+                    <table id="stockTable">
+                        <thead>
+                            <tr>
+                                <th>PRODUCT</th>
+                                <th>CURRENT STOCK</th>
+                                <th>MINIMUM REQUIRED</th>
+                                <th>RETAIL PRICE</th>
+                                <th>STOCK VALUE</th>
+                                <th>LAST SOLD</th>
+                                <th>STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stockTableBody">
+                            <tr><td colspan="7" style="text-align: center; padding: 30px;">Loading stock data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Outstanding Debts -->
+            <div class="section">
+                <div class="section-header">
+                    <h2>💳 OUTSTANDING DEBTS</h2>
+                    <div class="section-total" id="debtTotal">Total Owing: ₦0</div>
+                </div>
+                <div class="table-container">
+                    <table id="debtsTable">
+                        <thead>
+                            <tr>
+                                <th>CUSTOMER</th>
+                                <th>PRODUCT</th>
+                                <th>AMOUNT OWING</th>
+                                <th>DAYS OWING</th>
+                                <th>INTEREST</th>
+                                <th>TOTAL DUE</th>
+                                <th>CONTACT</th>
+                            </tr>
+                        </thead>
+                        <tbody id="debtsTableBody">
+                            <tr><td colspan="7" style="text-align: center; padding: 30px;">Checking for outstanding debts...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Customer Insights -->
+            <div class="section">
+                <div class="section-header">
+                    <h2>👥 TOP CUSTOMERS</h2>
+                    <div class="section-total" id="customersTotal">Top 10</div>
+                </div>
+                <div class="table-container">
+                    <table id="customersTable">
+                        <thead>
+                            <tr>
+                                <th>CUSTOMER</th>
+                                <th>TOTAL SPENT</th>
+                                <th>PURCHASES</th>
+                                <th>AVG PURCHASE</th>
+                                <th>LAST PURCHASE</th>
+                                <th>CONTACT</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customersTableBody">
+                            <tr><td colspan="6" style="text-align: center; padding: 30px;">Loading customer data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Daily Report Notice -->
+            <div class="report-box">
+                <div class="report-icon">📄</div>
+                <div class="report-content">
+                    <h3>DAILY AUTOMATIC PDF REPORT</h3>
+                    <p><strong>Generated automatically every day at 10:00 PM</strong></p>
+                    <p>Report includes: Today's sales with reasons • Top 10 products • Current stock levels • Financial summary • Outstanding debts • Customer insights</p>
+                    <p><strong>A5 Format PDF</strong> - Professional, printable report</p>
+                    <button onclick="window.ceoDashboard.generatePDFReport()" class="btn-primary">📥 GENERATE TODAY'S PDF REPORT</button>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p>Arijeem Enterprises • CEO Simple System v2.0</p>
+                <p>Connected to: arijeem-insight360.vercel.app • Detailed reports with insights</p>
+                <p>PDF reports at 10:00 PM • One login • Access worldwide</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="config.js"></script>
+    <script src="database.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
