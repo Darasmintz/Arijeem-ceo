@@ -677,7 +677,7 @@ class CEODashboard {
         if (totalEl) totalEl.textContent = `Top ${Math.min(customers.length, 10)}`;
     }
     
-    // PDF REPORT
+    // PDF REPORT - COMPLETE VERSION
     async generatePDFReport() {
         try {
             if (!this.businessData) {
@@ -685,17 +685,17 @@ class CEODashboard {
                 return;
             }
             
-            this.showMessage('Generating PDF report...', 'info');
+            this.showMessage('Generating comprehensive PDF report...', 'info');
             
             // Check if jsPDF is available
             if (typeof jspdf === 'undefined') {
                 // Load jsPDF
                 const script = document.createElement('script');
                 script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-                script.onload = () => this.createPDF();
+                script.onload = () => this.createFullPDF();
                 document.head.appendChild(script);
             } else {
-                this.createPDF();
+                this.createFullPDF();
             }
             
         } catch (error) {
@@ -704,34 +704,221 @@ class CEODashboard {
         }
     }
     
-    createPDF() {
+    createFullPDF() {
         try {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             
-            // Add title
-            doc.setFontSize(20);
-            doc.text('Arijeem Insight 360 - CEO Report', 20, 20);
+            const pageWidth = doc.internal.pageSize.width;
+            let yPosition = 20;
             
-            // Add date
+            // COMPANY HEADER
+            doc.setFontSize(24);
+            doc.setTextColor(0, 75, 147);
+            doc.text('ARIJEEM ENTERPRISES', pageWidth / 2, yPosition, { align: 'center' });
+            
+            doc.setFontSize(18);
+            doc.setTextColor(0, 0, 0);
+            doc.text('CEO BUSINESS REPORT', pageWidth / 2, yPosition + 10, { align: 'center' });
+            
             doc.setFontSize(12);
-            doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 30);
+            doc.setTextColor(100, 100, 100);
+            const reportDate = new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            doc.text(`Report Date: ${reportDate}`, pageWidth / 2, yPosition + 18, { align: 'center' });
             
-            // Add summary
+            yPosition = 50;
+            
+            // EXECUTIVE SUMMARY
             doc.setFontSize(16);
-            doc.text('Business Summary', 20, 50);
+            doc.setTextColor(0, 75, 147);
+            doc.text('EXECUTIVE SUMMARY', 20, yPosition);
+            
+            yPosition += 10;
+            doc.setFontSize(11);
+            doc.setTextColor(0, 0, 0);
             
             const summary = this.businessData.summary;
-            doc.setFontSize(12);
-            doc.text(`Total Sales Today: ₦${(summary.totalSales || 0).toLocaleString()}`, 30, 65);
-            doc.text(`Products Sold: ${summary.productsSold || 0}`, 30, 75);
-            doc.text(`Outstanding Debt: ₦${(summary.totalDebt || 0).toLocaleString()}`, 30, 85);
-            doc.text(`Profit Margin: ${summary.profitMargin || '0'}%`, 30, 95);
+            const salesAnalysis = this.businessData.salesAnalysis;
+            
+            const summaryData = [
+                `Total Sales Today: ₦${(summary.totalSales || 0).toLocaleString()}`,
+                `Products Sold: ${summary.productsSold || 0} units`,
+                `Transaction Count: ${summary.transactionCount || 0}`,
+                `Average Sale: ₦${Math.round(salesAnalysis?.averageSale || 0).toLocaleString()}`,
+                `Total Profit: ₦${Math.round(salesAnalysis?.totalProfit || 0).toLocaleString()}`,
+                `Profit Margin: ${summary.profitMargin || '0'}%`,
+                `Active Staff: ${summary.staffCount || 0}`,
+                `Active Customers: ${summary.activeCustomers || 0}`,
+                `Stock Status: ${summary.stockStatus || 'unknown'}`,
+                `Report Generated: ${this.businessData.summary?.lastUpdate ? new Date(this.businessData.summary.lastUpdate).toLocaleString() : 'Just now'}`
+            ];
+            
+            summaryData.forEach((item, index) => {
+                doc.text(item, 30, yPosition + (index * 8));
+            });
+            
+            yPosition += 90;
+            
+            // SALES DATA SECTION
+            if (this.businessData.sales && this.businessData.sales.length > 0) {
+                doc.addPage();
+                yPosition = 20;
+                
+                doc.setFontSize(16);
+                doc.setTextColor(0, 75, 147);
+                doc.text('TODAY\'S SALES DETAILS', 20, yPosition);
+                
+                yPosition += 10;
+                doc.setFontSize(10);
+                
+                // Sales table header
+                doc.text('Time', 20, yPosition);
+                doc.text('Customer', 40, yPosition);
+                doc.text('Product', 80, yPosition);
+                doc.text('Qty', 130, yPosition);
+                doc.text('Amount', 150, yPosition);
+                doc.text('Payment', 180, yPosition);
+                
+                yPosition += 5;
+                doc.line(20, yPosition, 190, yPosition);
+                yPosition += 5;
+                
+                // Sales table rows
+                this.businessData.sales.slice(0, 20).forEach((sale, index) => {
+                    if (yPosition > 250) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+                    
+                    doc.text(sale.time || 'N/A', 20, yPosition);
+                    doc.text((sale.customer_name || 'Customer').substring(0, 15), 40, yPosition);
+                    doc.text((sale.product_name || 'Product').substring(0, 20), 80, yPosition);
+                    doc.text((sale.quantity || 0).toString(), 130, yPosition);
+                    doc.text(`₦${(sale.total_price || 0).toLocaleString()}`, 150, yPosition);
+                    doc.text(sale.payment_method || 'cash', 180, yPosition);
+                    
+                    yPosition += 8;
+                });
+            }
+            
+            // PRODUCTS SECTION
+            if (this.businessData.products && this.businessData.products.length > 0) {
+                doc.addPage();
+                yPosition = 20;
+                
+                doc.setFontSize(16);
+                doc.setTextColor(0, 75, 147);
+                doc.text('PRODUCT INVENTORY', 20, yPosition);
+                
+                yPosition += 10;
+                doc.setFontSize(10);
+                
+                // Stock analysis
+                const stock = this.businessData.stock;
+                doc.text(`Stock Status: ${stock.status || 'unknown'}`, 30, yPosition);
+                doc.text(`Critical Items: ${stock.critical?.length || 0}`, 30, yPosition + 8);
+                doc.text(`Warning Items: ${stock.warning?.length || 0}`, 30, yPosition + 16);
+                doc.text(`Good Items: ${stock.good?.length || 0}`, 30, yPosition + 24);
+                
+                yPosition += 40;
+                
+                // Top products table header
+                doc.text('Product Name', 20, yPosition);
+                doc.text('Stock', 80, yPosition);
+                doc.text('Price', 100, yPosition);
+                doc.text('Value', 130, yPosition);
+                doc.text('Status', 160, yPosition);
+                
+                yPosition += 5;
+                doc.line(20, yPosition, 190, yPosition);
+                yPosition += 5;
+                
+                // Top products rows
+                (this.businessData.topProducts || []).slice(0, 15).forEach((product, index) => {
+                    if (yPosition > 250) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+                    
+                    const qty = product.current_qty || 0;
+                    const price = product.retail_price || 0;
+                    const value = qty * price;
+                    let status = 'Good';
+                    if (qty <= CEO_CONFIG.STOCK_CRITICAL) status = 'Critical';
+                    else if (qty <= CEO_CONFIG.STOCK_WARNING) status = 'Warning';
+                    
+                    doc.text((product.name || 'Product').substring(0, 25), 20, yPosition);
+                    doc.text(qty.toString(), 80, yPosition);
+                    doc.text(`₦${price.toLocaleString()}`, 100, yPosition);
+                    doc.text(`₦${value.toLocaleString()}`, 130, yPosition);
+                    doc.text(status, 160, yPosition);
+                    
+                    yPosition += 8;
+                });
+            }
+            
+            // CRITICAL STOCK ALERTS
+            if (this.businessData.stock?.critical && this.businessData.stock.critical.length > 0) {
+                doc.addPage();
+                yPosition = 20;
+                
+                doc.setFontSize(16);
+                doc.setTextColor(255, 0, 0);
+                doc.text('🚨 CRITICAL STOCK ALERTS', 20, yPosition);
+                
+                yPosition += 10;
+                doc.setFontSize(11);
+                doc.setTextColor(0, 0, 0);
+                
+                this.businessData.stock.critical.forEach((product, index) => {
+                    if (yPosition > 250) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+                    
+                    doc.text(`• ${product.name || 'Product'} - ${product.current_qty || 0} units remaining`, 30, yPosition);
+                    yPosition += 8;
+                });
+            }
+            
+            // DEBTS SECTION
+            if (this.businessData.debts && this.businessData.debts.length > 0) {
+                doc.addPage();
+                yPosition = 20;
+                
+                doc.setFontSize(16);
+                doc.setTextColor(0, 75, 147);
+                doc.text('OUTSTANDING DEBTS', 20, yPosition);
+                
+                yPosition += 10;
+                doc.setFontSize(10);
+                
+                this.businessData.debts.slice(0, 10).forEach((debt, index) => {
+                    if (yPosition > 250) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+                    
+                    doc.text(`${debt.customer_name || 'Customer'}: ₦${(debt.amount_owing || 0).toLocaleString()}`, 30, yPosition);
+                    yPosition += 8;
+                });
+            }
+            
+            // FOOTER
+            const lastPage = doc.internal.getNumberOfPages();
+            doc.setPage(lastPage);
+            yPosition = doc.internal.pageSize.height - 20;
+            
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Arijeem Insight 360 - CEO Dashboard Report', pageWidth / 2, yPosition, { align: 'center' });
+            doc.text('Confidential - For Executive Use Only', pageWidth / 2, yPosition + 8, { align: 'center' });
             
             // Save PDF
-            doc.save(`Arijeem-Report-${new Date().toISOString().split('T')[0]}.pdf`);
+            const filename = `Arijeem-CEO-Report-${new Date().toISOString().split('T')[0]}.pdf`;
+            doc.save(filename);
             
-            this.showMessage('PDF report generated!', 'success');
+            this.showMessage(`✅ PDF report generated: ${filename}`, 'success');
             
         } catch (error) {
             console.error('PDF creation error:', error);
