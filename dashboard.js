@@ -385,6 +385,31 @@ class CEODashboard {
         this.updateDebtsTable(debts);
         this.updateCustomersTable(customers || []);
         this.updateLastUpdateTime();
+        this.updateSectionTotals(summary); // ADDED THIS
+    }
+    
+    // UPDATE SECTION TOTALS - ADDED THIS FUNCTION
+    updateSectionTotals(summary) {
+        const salesTotal = document.getElementById('salesTotal');
+        const stockTotal = document.getElementById('stockTotal');
+        const debtTotal = document.getElementById('debtTotal');
+        const topProductsTotal = document.getElementById('topProductsTotal');
+        const customersTotal = document.getElementById('customersTotal');
+        const analysisTotal = document.getElementById('analysisTotal');
+        
+        if (salesTotal) salesTotal.textContent = `Total: ₦${(summary.totalSales || 0).toLocaleString()}`;
+        if (stockTotal) {
+            const stockValue = this.businessData.products?.reduce((sum, p) => {
+                const qty = p.current_qty || 0;
+                const price = p.retail_price || p.price || 0;
+                return sum + (qty * price);
+            }, 0) || 0;
+            stockTotal.textContent = `Total Value: ₦${stockValue.toLocaleString()}`;
+        }
+        if (debtTotal) debtTotal.textContent = `Total Owing: ₦${(summary.totalDebt || 0).toLocaleString()}`;
+        if (topProductsTotal) topProductsTotal.textContent = `Top ${Math.min(this.businessData.topProducts?.length || 0, 10)} Products`;
+        if (customersTotal) customersTotal.textContent = `Top ${Math.min(this.businessData.customers?.length || 0, 10)}`;
+        if (analysisTotal) analysisTotal.textContent = `${summary.transactionCount || 0} transactions analyzed`;
     }
     
     // FIXED: This was causing the error
@@ -493,6 +518,9 @@ class CEODashboard {
         const total = sales.reduce((sum, s) => sum + (s.total_price || 0), 0);
         
         sales.slice(0, 15).forEach(sale => {
+            const unitPrice = sale.unit_price || (sale.total_price / sale.quantity) || 0;
+            const profit = (sale.total_price || 0) * 0.3; // 30% profit estimate
+            
             html += `
                 <tr>
                     <td><strong>${sale.time || 'N/A'}</strong></td>
@@ -502,7 +530,7 @@ class CEODashboard {
                     <td>₦${(sale.total_price || 0).toLocaleString()}</td>
                     <td><span class="payment-method">${sale.payment_method || 'cash'}</span></td>
                     <td><span class="sale-reason">${sale.reason || 'Sale'}</span></td>
-                    <td style="color: #10b981;">₦${Math.round(((sale.total_price || 0) * 0.3)).toLocaleString()}</td>
+                    <td style="color: #10b981;">₦${Math.round(profit).toLocaleString()}</td>
                 </tr>
             `;
         });
@@ -531,19 +559,20 @@ class CEODashboard {
         
         products.slice(0, 10).forEach((product, index) => {
             const qty = product.current_qty || 0;
+            const price = product.retail_price || product.price || 0;
             const status = qty <= CEO_CONFIG.STOCK_CRITICAL ? 'critical' :
                           qty <= CEO_CONFIG.STOCK_WARNING ? 'warning' : 'good';
             
             const reorderNeeded = qty <= CEO_CONFIG.STOCK_WARNING ? 'YES' : 'NO';
-            const stockValue = qty * (product.retail_price || 0);
+            const stockValue = qty * price;
             
             html += `
                 <tr>
                     <td><strong>${product.name || 'Product'}</strong></td>
                     <td style="text-align: center;">${qty}</td>
-                    <td style="text-align: center;">0</td>
+                    <td style="text-align: center;">${product.sold_today || 0}</td>
                     <td>₦${stockValue.toLocaleString()}</td>
-                    <td style="text-align: center;">0%</td>
+                    <td style="text-align: center;">${product.turnover_rate ? product.turnover_rate.toFixed(1) : '0'}%</td>
                     <td><span class="reorder-${reorderNeeded === 'YES' ? 'needed' : 'ok'}">${reorderNeeded}</span></td>
                     <td><span class="status-${status}">${status.toUpperCase()}</span></td>
                 </tr>
@@ -575,7 +604,7 @@ class CEODashboard {
         
         products.slice(0, 15).forEach(p => {
             const qty = p.current_qty || 0;
-            const price = p.retail_price || 0;
+            const price = p.retail_price || p.price || 0;
             const value = qty * price;
             totalValue += value;
             
@@ -587,7 +616,7 @@ class CEODashboard {
                 <tr>
                     <td><strong>${p.name || 'Product'}</strong></td>
                     <td style="text-align: center;">${qty}</td>
-                    <td style="text-align: center;">${CEO_CONFIG.STOCK_WARNING}</td>
+                    <td style="text-align: center;">${p.min_qty || CEO_CONFIG.STOCK_WARNING}</td>
                     <td>₦${price.toLocaleString()}</td>
                     <td>₦${value.toLocaleString()}</td>
                     <td style="text-align: center;">${status.toUpperCase()}</td>
@@ -631,9 +660,9 @@ class CEODashboard {
                     <td>Product</td>
                     <td>₦${(debt.amount_owing || 0).toLocaleString()}</td>
                     <td style="text-align: center;">${days} days</td>
-                    <td>₦0</td>
-                    <td><strong>₦${(debt.amount_owing || 0).toLocaleString()}</strong></td>
-                    <td>N/A</td>
+                    <td>₦${(debt.interest_accrued || 0).toLocaleString()}</td>
+                    <td><strong>₦${(debt.total_due || debt.amount_owing || 0).toLocaleString()}</strong></td>
+                    <td>${debt.customer_phone || 'N/A'}</td>
                 </tr>
             `;
         });
@@ -661,13 +690,16 @@ class CEODashboard {
         let html = '';
         
         customers.slice(0, 10).forEach(customer => {
+            const lastPurchase = customer.last_purchase ? 
+                new Date(customer.last_purchase).toLocaleDateString() : 'Never';
+            
             html += `
                 <tr>
                     <td><strong>${customer.name || 'Customer'}</strong></td>
                     <td>₦${(customer.total_spent || 0).toLocaleString()}</td>
                     <td style="text-align: center;">${customer.purchase_count || 0}</td>
                     <td>₦${Math.round((customer.total_spent || 0) / Math.max(customer.purchase_count || 1, 1)).toLocaleString()}</td>
-                    <td>Today</td>
+                    <td>${lastPurchase}</td>
                     <td>${customer.phone || 'N/A'}</td>
                 </tr>
             `;
@@ -841,7 +873,7 @@ class CEODashboard {
                     }
                     
                     const qty = product.current_qty || 0;
-                    const price = product.retail_price || 0;
+                    const price = product.retail_price || product.price || 0;
                     const value = qty * price;
                     let status = 'Good';
                     if (qty <= CEO_CONFIG.STOCK_CRITICAL) status = 'Critical';
