@@ -24,16 +24,12 @@ class CEODatabase {
         try {
             console.log('🔄 Initializing connection...');
             
-            // Create Supabase client
             this.supabase = supabase.createClient(
                 CEO_CONFIG.SUPABASE_URL,
                 CEO_CONFIG.SUPABASE_KEY
             );
             
-            // Test connection
             await this.testConnection();
-            
-            // Load local users
             this.loadLocalUsers();
             
             console.log('✅ Database initialized');
@@ -48,7 +44,6 @@ class CEODatabase {
         try {
             console.log('🔌 Testing connection...');
             
-            // Simple test query
             const { error } = await this.supabase
                 .from('products')
                 .select('id')
@@ -57,23 +52,26 @@ class CEODatabase {
             if (error) {
                 console.log('⚠️ Connection test failed:', error.message);
                 this.isConnected = false;
+                return false;
             } else {
                 console.log('✅ Connected to database');
                 this.isConnected = true;
                 this.lastConnectionTest = new Date().toISOString();
+                return true;
             }
             
         } catch (error) {
             console.error('Connection test failed:', error);
             this.isConnected = false;
+            return false;
         }
     }
     
     async ensureConnection() {
         if (!this.isConnected) {
-            await this.testConnection();
+            return await this.testConnection();
         }
-        return this.isConnected;
+        return true;
     }
     
     loadLocalUsers() {
@@ -92,7 +90,6 @@ class CEODatabase {
         try {
             console.log('👑 Creating CEO account...');
             
-            // Check if email exists locally
             const localExists = this.localUsers.find(u => u.email === ceoData.email);
             if (localExists) {
                 return {
@@ -102,7 +99,6 @@ class CEODatabase {
                 };
             }
             
-            // Create user object
             const newUser = {
                 id: 'ceo_' + Date.now(),
                 email: ceoData.email,
@@ -115,7 +111,6 @@ class CEODatabase {
                 is_local: true
             };
             
-            // Save locally
             this.localUsers.push(newUser);
             localStorage.setItem('ceo_users', JSON.stringify(this.localUsers));
             localStorage.setItem('ceo_last_user', ceoData.email);
@@ -137,7 +132,7 @@ class CEODatabase {
         }
     }
     
-    // SYNC FROM MAIN SYSTEM
+    // SYNC FROM MAIN SYSTEM - UPDATED FOR YOUR TABLES
     async syncFromMainSystem() {
         try {
             console.log('🔄 Syncing data...');
@@ -151,30 +146,28 @@ class CEODatabase {
             const today = new Date();
             const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
             
-            // Fetch data
+            // Fetch data from YOUR tables
             const sales = await this.fetchSales(todayStart);
             const products = await this.fetchProducts();
-            const debts = await this.fetchDebts();
+            const users = await this.fetchUsers();
             
             // Analyze
             const salesAnalysis = this.analyzeSales(sales);
             
             // Update sync data
             this.syncData = {
-                sales: sales,
-                products: products,
-                users: [],
-                debts: debts,
-                customers: [], // Empty for now
+                sales: sales || [],
+                products: products || [],
+                users: users || [],
+                debts: [], // Your system might not have debts table
+                customers: [], // Will extract from sales
                 salesAnalysis: salesAnalysis,
                 lastUpdate: new Date().toISOString()
             };
             
-            console.log(`✅ Sync complete: ${sales.length} sales, ${products.length} products`);
+            console.log(`✅ Sync complete`);
             
-            // Save to localStorage
             this.saveToLocalStorage();
-            
             return true;
             
         } catch (error) {
@@ -183,7 +176,7 @@ class CEODatabase {
         }
     }
     
-    // FETCH SALES
+    // FETCH SALES - ADAPTED FOR YOUR SYSTEM
     async fetchSales(todayStart) {
         try {
             console.log('📈 Fetching sales...');
@@ -204,20 +197,30 @@ class CEODatabase {
                 return [];
             }
             
-            // Process sales
-            const processedSales = data.map(sale => ({
-                id: sale.id,
-                product_name: sale.product_name || 'Product',
-                customer_name: sale.customer_name || 'Customer',
-                quantity: sale.quantity || 1,
-                total_price: sale.total_price || 0,
-                unit_price: sale.unit_price || 0,
-                payment_method: sale.payment_method || 'cash',
-                sale_date: sale.sale_date || sale.created_at,
-                created_at: sale.created_at,
-                time: new Date(sale.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-                reason: 'Sale'
-            }));
+            // Process sales based on YOUR column names
+            const processedSales = data.map(sale => {
+                // Try different column name patterns
+                const productName = sale.product_name || sale.product || 'Product';
+                const customerName = sale.customer_name || sale.customer || sale.customerName || 'Customer';
+                const quantity = sale.quantity || sale.qty || 1;
+                const totalPrice = sale.total_price || sale.total || sale.amount || 0;
+                const paymentMethod = sale.payment_method || sale.payment || 'cash';
+                const saleDate = sale.sale_date || sale.created_at;
+                
+                return {
+                    id: sale.id,
+                    product_name: productName,
+                    customer_name: customerName,
+                    quantity: quantity,
+                    total_price: totalPrice,
+                    unit_price: sale.unit_price || (totalPrice / quantity),
+                    payment_method: paymentMethod,
+                    sale_date: saleDate,
+                    created_at: sale.created_at,
+                    time: new Date(sale.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                    reason: 'Sale'
+                };
+            });
             
             console.log(`✅ Found ${processedSales.length} sales`);
             return processedSales;
@@ -228,7 +231,7 @@ class CEODatabase {
         }
     }
     
-    // FETCH PRODUCTS
+    // FETCH PRODUCTS - ADAPTED FOR YOUR SYSTEM
     async fetchProducts() {
         try {
             console.log('📦 Fetching products...');
@@ -256,35 +259,31 @@ class CEODatabase {
         }
     }
     
-    // FETCH DEBTS
-    async fetchDebts() {
+    // FETCH USERS/STAFF
+    async fetchUsers() {
         try {
-            console.log('💳 Fetching debts...');
+            console.log('👥 Fetching users...');
             
             const { data, error } = await this.supabase
-                .from('sales')
+                .from('users')
                 .select('*')
-                .or('payment_status.eq.owing,payment_status.eq.partial');
+                .eq('is_active', true);
             
             if (error) {
-                console.log('❌ Debts fetch error:', error.message);
+                console.log('❌ Users fetch error:', error.message);
                 return [];
             }
             
             if (!data || data.length === 0) {
-                console.log('ℹ️ No debts found');
+                console.log('ℹ️ No users found');
                 return [];
             }
             
-            console.log(`✅ Found ${data.length} debts`);
-            return data.map(debt => ({
-                id: debt.id,
-                customer_name: debt.customer_name || 'Customer',
-                amount_owing: debt.total_price || 0
-            }));
+            console.log(`✅ Found ${data.length} users`);
+            return data;
             
         } catch (error) {
-            console.error('Fetch debts error:', error);
+            console.error('Fetch users error:', error);
             return [];
         }
     }
@@ -301,7 +300,7 @@ class CEODatabase {
         }
         
         const totalSales = sales.reduce((sum, sale) => sum + (sale.total_price || 0), 0);
-        const totalProfit = totalSales * 0.3; // 30% profit estimate
+        const totalProfit = totalSales * 0.3;
         
         return {
             totalSales,
@@ -312,12 +311,11 @@ class CEODatabase {
         };
     }
     
-    // GET BUSINESS DATA - SIMPLIFIED VERSION
+    // GET BUSINESS DATA - SIMPLIFIED
     async getBusinessData() {
         try {
             console.log('📊 Getting business data...');
             
-            // Try to sync first
             const syncSuccess = await this.syncFromMainSystem();
             
             if (!syncSuccess) {
@@ -325,12 +323,11 @@ class CEODatabase {
                 return this.loadCachedData();
             }
             
-            const { sales, products, debts, salesAnalysis, lastUpdate } = this.syncData;
+            const { sales, products, users, salesAnalysis, lastUpdate } = this.syncData;
             
             // Calculate totals
             const totalSales = salesAnalysis.totalSales || 0;
             const productsSold = sales.reduce((sum, s) => sum + (s.quantity || 0), 0);
-            const totalDebt = debts.reduce((sum, d) => sum + (d.amount_owing || 0), 0);
             
             // Analyze stock
             const stock = this.analyzeStock(products);
@@ -338,41 +335,36 @@ class CEODatabase {
             // Get top products
             const topProducts = this.getTopProducts(products);
             
+            // Extract unique customers from sales
+            const uniqueCustomers = [...new Set(sales.map(s => s.customer_name).filter(name => name))];
+            
             console.log('✅ Business data loaded successfully');
             
-            // Return simplified data structure
             return {
                 sales: sales || [],
                 products: products || [],
-                debts: debts || [],
-                customers: [], // Empty array for now
-                salesAnalysis: salesAnalysis || {
-                    totalSales: 0,
-                    totalProfit: 0,
-                    averageSale: 0,
-                    transactionCount: 0,
-                    profitMargin: 0
-                },
+                debts: [], // Empty for now
+                customers: uniqueCustomers.map(name => ({ name: name, total_spent: 0 })), // Simple customer list
+                salesAnalysis: salesAnalysis,
                 summary: {
                     totalSales: totalSales,
                     productsSold: productsSold,
-                    staffCount: 0, // Not implemented yet
-                    totalDebt: totalDebt,
+                    staffCount: users.length || 0,
+                    totalDebt: 0, // Your system might not track debts
                     totalProfit: salesAnalysis.totalProfit || 0,
                     profitMargin: salesAnalysis.profitMargin || 0,
                     stockStatus: stock.status || 'unknown',
                     lastUpdate: lastUpdate,
                     transactionCount: sales.length || 0,
-                    activeCustomers: 0 // Set to 0 for now
+                    activeCustomers: uniqueCustomers.length || 0 // ADDED THIS
                 },
-                stock: stock || { critical: [], warning: [], good: [], status: 'unknown' },
+                stock: stock,
                 topProducts: topProducts || [],
-                isConnected: this.isConnected,
-                lastConnectionTest: this.lastConnectionTest
+                isConnected: this.isConnected
             };
             
         } catch (error) {
-            console.error('❌ Get business data error:', error.message || error);
+            console.error('❌ Get business data error:', error);
             return this.loadCachedData();
         }
     }
@@ -392,7 +384,7 @@ class CEODatabase {
         const good = [];
         
         products.forEach(p => {
-            const qty = p.current_qty || 0;
+            const qty = p.current_qty || p.quantity || 0;
             
             if (qty <= CEO_CONFIG.STOCK_CRITICAL) {
                 critical.push(p);
@@ -412,29 +404,26 @@ class CEODatabase {
     getTopProducts(products) {
         if (!products || products.length === 0) return [];
         
-        // Sort by stock value (quantity * price)
         return products
+            .slice(0, CEO_CONFIG.TOP_PRODUCTS_LIMIT)
             .map(p => ({
-                ...p,
-                stock_value: (p.current_qty || 0) * (p.retail_price || 0)
-            }))
-            .sort((a, b) => b.stock_value - a.stock_value)
-            .slice(0, CEO_CONFIG.TOP_PRODUCTS_LIMIT);
+                name: p.name,
+                current_qty: p.current_qty || p.quantity || 0,
+                retail_price: p.retail_price || p.price || 0
+            }));
     }
     
     loadCachedData() {
         try {
             const cached = localStorage.getItem('ceo_cached_data');
             if (cached) {
-                const parsed = JSON.parse(cached);
                 console.log('📂 Loaded cached data');
-                return parsed;
+                return JSON.parse(cached);
             }
         } catch (error) {
             console.error('Error loading cached data:', error);
         }
         
-        // Return empty data structure
         return {
             sales: [],
             products: [],
@@ -467,10 +456,20 @@ class CEODatabase {
     
     saveToLocalStorage() {
         try {
-            // Save the entire business data structure
-            const businessData = await this.getBusinessData();
+            // Get current data
+            const businessData = {
+                sales: this.syncData.sales || [],
+                products: this.syncData.products || [],
+                salesAnalysis: this.syncData.salesAnalysis || {},
+                summary: {
+                    lastUpdate: this.syncData.lastUpdate,
+                    transactionCount: this.syncData.sales?.length || 0
+                },
+                timestamp: new Date().toISOString()
+            };
+            
             localStorage.setItem('ceo_cached_data', JSON.stringify(businessData));
-            console.log('💾 Data saved to cache');
+            console.log('💾 Saved to cache');
         } catch (error) {
             console.error('Error saving to localStorage:', error);
         }
@@ -482,11 +481,7 @@ class CEODatabase {
             console.log(`🔐 Login attempt: ${email}`);
             
             const hashedPassword = btoa(password);
-            
-            // Check local users
-            const localUser = this.localUsers.find(u => 
-                u.email === email && u.password_hash === hashedPassword
-            );
+            const localUser = this.localUsers.find(u => u.email === email && u.password_hash === hashedPassword);
             
             if (localUser) {
                 console.log('✅ Login successful');
