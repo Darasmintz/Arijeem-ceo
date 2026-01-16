@@ -848,19 +848,31 @@ class CEODashboard {
         });
     }
     
-    // Clean text function - removes special symbols
-    cleanText(text) {
-        if (!text) return '';
-        return String(text)
-            .replace(/[^\w\s\-.,()\/@#&]/g, '') // Keep only letters, numbers, spaces, and common punctuation
-            .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-            .trim()
-            .substring(0, 50); // Limit length
+    // ULTRA STRONG TEXT CLEANING FUNCTION - FIXES & SYMBOL ISSUE
+    cleanTextForPDF(text) {
+        if (!text && text !== 0) return 'N/A';
+        
+        // Convert to string
+        let str = String(text);
+        
+        // Remove ALL special symbols except basic punctuation
+        str = str.replace(/[&]/g, 'and'); // Replace & with 'and'
+        str = str.replace(/[^\w\s.,-]/g, ''); // Remove everything except letters, numbers, spaces, ., ,, -
+        str = str.replace(/\s+/g, ' '); // Replace multiple spaces with single space
+        str = str.trim();
+        
+        // Limit length for PDF cells
+        if (str.length > 40) {
+            str = str.substring(0, 37) + '...';
+        }
+        
+        return str || 'N/A';
     }
     
     // Format currency properly for PDF
-    formatCurrency(amount) {
-        return `₦${Math.round(amount).toLocaleString()}`;
+    formatCurrencyForPDF(amount) {
+        if (!amount && amount !== 0) return '₦0';
+        return `₦${Math.round(Number(amount)).toLocaleString()}`;
     }
     
     // Get clean data for PDF
@@ -879,6 +891,9 @@ class CEODashboard {
         const actualTotalDebt = summary?.totalDebt || debts.reduce((sum, d) => sum + (d.amount || d.amount_owing || 0), 0);
         const actualTransactionCount = summary?.transactionCount || sales.length;
         const actualCustomerCount = summary?.activeCustomers || customers.length;
+        const actualProfit = Math.round(salesAnalysis?.totalProfit || (actualTotalSales * 0.3));
+        const actualAverageSale = Math.round(salesAnalysis?.averageSale || (actualTotalSales / Math.max(actualTransactionCount, 1)));
+        const actualProfitMargin = salesAnalysis?.profitMargin || '30';
         
         return {
             summary: {
@@ -888,12 +903,12 @@ class CEODashboard {
                 transactionCount: actualTransactionCount,
                 customerCount: actualCustomerCount,
                 stockValue: totalStockValue,
-                profit: Math.round(salesAnalysis?.totalProfit || (actualTotalSales * 0.3)),
-                profitMargin: salesAnalysis?.profitMargin || '30',
-                averageSale: Math.round(salesAnalysis?.averageSale || (actualTotalSales / Math.max(actualTransactionCount, 1)))
+                profit: actualProfit,
+                profitMargin: actualProfitMargin,
+                averageSale: actualAverageSale
             },
-            products: products.slice(0, CEO_CONFIG.MAX_PDF_PRODUCTS).map(p => ({
-                name: this.cleanText(p.name),
+            products: products.slice(0, CEO_CONFIG.MAX_PDF_PRODUCTS || 30).map(p => ({
+                name: this.cleanTextForPDF(p.name),
                 quantity: p.current_qty || 0,
                 minQty: p.min_qty || CEO_CONFIG.STOCK_WARNING,
                 price: p.price || p.selling_price || 0,
@@ -902,27 +917,27 @@ class CEODashboard {
             })),
             sales: sales.slice(0, 50).map(s => ({
                 time: s.time || new Date(s.sale_date || s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                customer: this.cleanText(s.customer_name) || 'Customer',
-                product: this.cleanText(s.product_name) || 'Product',
+                customer: this.cleanTextForPDF(s.customer_name),
+                product: this.cleanTextForPDF(s.product_name),
                 quantity: s.quantity || 1,
                 amount: s.total_price || s.amount || 0,
-                payment: this.cleanText(s.payment_method) || 'Cash',
+                payment: this.cleanTextForPDF(s.payment_method),
                 profit: Math.round((s.total_price || 0) * 0.3)
             })),
             debts: debts.slice(0, 50).map(d => ({
-                customer: this.cleanText(d.customer_name) || 'Customer',
+                customer: this.cleanTextForPDF(d.customer_name),
                 amount: d.amount || d.amount_owing || 0,
                 days: d.days_owing || this.calculateDaysOwing(d.created_at),
-                phone: this.cleanText(d.phone) || 'N/A',
+                phone: this.cleanTextForPDF(d.phone),
                 priority: this.getDebtPriority(d.days_owing || 0)
             })),
             customers: customers.slice(0, 20).map(c => ({
-                name: this.cleanText(c.name) || 'Customer',
+                name: this.cleanTextForPDF(c.name),
                 totalSpent: c.total_spent || 0,
                 visits: c.purchase_count || 0,
                 averageSpend: Math.round((c.total_spent || 0) / Math.max(c.purchase_count || 1, 1)),
                 lastVisit: c.last_purchase ? new Date(c.last_purchase).toLocaleDateString() : 'Never',
-                phone: this.cleanText(c.phone) || 'N/A'
+                phone: this.cleanTextForPDF(c.phone)
             }))
         };
     }
@@ -941,10 +956,14 @@ class CEODashboard {
     
     calculateDaysOwing(dateString) {
         if (!dateString) return 0;
-        const debtDate = new Date(dateString);
-        const today = new Date();
-        const diffTime = Math.abs(today - debtDate);
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        try {
+            const debtDate = new Date(dateString);
+            const today = new Date();
+            const diffTime = Math.abs(today - debtDate);
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        } catch (e) {
+            return 0;
+        }
     }
     
     async createCleanPDFReport() {
@@ -956,6 +975,7 @@ class CEODashboard {
         
         // Get clean data
         const pdfData = this.getPDFData();
+        const reportDate = new Date();
         
         // ===== PAGE 1: EXECUTIVE SUMMARY =====
         // Header
@@ -974,7 +994,6 @@ class CEODashboard {
         // Report Info
         doc.setFontSize(11);
         doc.setTextColor(100, 100, 100);
-        const reportDate = new Date();
         doc.text(`Report Date: ${reportDate.toLocaleDateString('en-NG')}`, margin, yPos);
         doc.text(`Report Time: ${reportDate.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}`, pageWidth - margin, yPos, { align: 'right' });
         
@@ -990,15 +1009,15 @@ class CEODashboard {
         // Summary Table - NO SYMBOLS mixed with text
         const summaryData = [
             ['Business Metric', 'Value'],
-            ['Total Sales Today', this.formatCurrency(pdfData.summary.totalSales)],
+            ['Total Sales Today', this.formatCurrencyForPDF(pdfData.summary.totalSales)],
             ['Products Sold Today', pdfData.summary.productsSold.toLocaleString()],
             ['Sales Transactions', pdfData.summary.transactionCount.toLocaleString()],
-            ['Average Sale Value', this.formatCurrency(pdfData.summary.averageSale)],
-            ['Total Profit', this.formatCurrency(pdfData.summary.profit)],
+            ['Average Sale Value', this.formatCurrencyForPDF(pdfData.summary.averageSale)],
+            ['Total Profit', this.formatCurrencyForPDF(pdfData.summary.profit)],
             ['Profit Margin', pdfData.summary.profitMargin + '%'],
-            ['Stock Value', this.formatCurrency(pdfData.summary.stockValue)],
+            ['Stock Value', this.formatCurrencyForPDF(pdfData.summary.stockValue)],
             ['Products in Stock', pdfData.products.length.toLocaleString()],
-            ['Outstanding Debts', this.formatCurrency(pdfData.summary.totalDebt)],
+            ['Outstanding Debts', this.formatCurrencyForPDF(pdfData.summary.totalDebt)],
             ['Active Customers', pdfData.summary.customerCount.toLocaleString()]
         ];
         
@@ -1020,7 +1039,7 @@ class CEODashboard {
             
             doc.setFontSize(16);
             doc.setTextColor(0, 75, 147);
-            doc.text('TODAY\'S SALES DETAILS', margin, yPos);
+            doc.text('TODAYS SALES DETAILS', margin, yPos);
             
             yPos += 10;
             
@@ -1030,9 +1049,9 @@ class CEODashboard {
                 sale.customer,
                 sale.product,
                 sale.quantity,
-                this.formatCurrency(sale.amount),
+                this.formatCurrencyForPDF(sale.amount),
                 sale.payment,
-                this.formatCurrency(sale.profit)
+                this.formatCurrencyForPDF(sale.profit)
             ]);
             
             salesTableData.unshift(['Time', 'Customer', 'Product', 'Qty', 'Amount', 'Payment', 'Profit']);
@@ -1075,7 +1094,7 @@ class CEODashboard {
             doc.text(`Low Stock: ${lowCount}`, margin + 140, yPos);
             yPos += 8;
             doc.text(`Good Stock: ${goodCount}`, margin, yPos);
-            doc.text(`Total Stock Value: ${this.formatCurrency(pdfData.summary.stockValue)}`, margin + 70, yPos);
+            doc.text(`Total Stock Value: ${this.formatCurrencyForPDF(pdfData.summary.stockValue)}`, margin + 70, yPos);
             
             yPos += 15;
             
@@ -1084,8 +1103,8 @@ class CEODashboard {
                 product.name,
                 product.quantity.toLocaleString(),
                 product.minQty.toLocaleString(),
-                this.formatCurrency(product.price),
-                this.formatCurrency(product.value),
+                this.formatCurrencyForPDF(product.price),
+                this.formatCurrencyForPDF(product.value),
                 product.status,
                 product.quantity <= product.minQty ? 'YES' : 'NO'
             ]);
@@ -1104,7 +1123,7 @@ class CEODashboard {
                 pageBreak: 'auto',
                 styles: { overflow: 'linebreak', cellWidth: 'wrap' },
                 willDrawCell: (data) => {
-                    // Color code status cells - keep this logic simple
+                    // Color code status cells
                     if (data.column.index === 5) {
                         const status = data.cell.raw;
                         if (status === 'CRITICAL') {
@@ -1136,7 +1155,7 @@ class CEODashboard {
                 
                 const debtsTableData = pdfData.debts.map(debt => [
                     debt.customer,
-                    this.formatCurrency(debt.amount),
+                    this.formatCurrencyForPDF(debt.amount),
                     debt.days + ' days',
                     debt.phone,
                     debt.priority
@@ -1167,9 +1186,9 @@ class CEODashboard {
                 
                 const customersTableData = pdfData.customers.map(customer => [
                     customer.name,
-                    this.formatCurrency(customer.totalSpent),
+                    this.formatCurrencyForPDF(customer.totalSpent),
                     customer.visits,
-                    this.formatCurrency(customer.averageSpend),
+                    this.formatCurrencyForPDF(customer.averageSpend),
                     customer.lastVisit,
                     customer.phone
                 ]);
@@ -1212,7 +1231,7 @@ class CEODashboard {
                 doc.setTextColor(100, 100, 100);
                 doc.text('Confidential Document - For Executive Use Only', pageWidth / 2, doc.internal.pageSize.height - 20, { align: 'center' });
                 doc.text(`Report Generated: ${reportDate.toLocaleString()}`, pageWidth / 2, doc.internal.pageSize.height - 15, { align: 'center' });
-                doc.text(`Generated By: ${this.cleanText(this.currentCEO?.name) || 'CEO Dashboard System'}`, pageWidth / 2, doc.internal.pageSize.height - 10, { align: 'center' });
+                doc.text(`Generated By: ${this.cleanTextForPDF(this.currentCEO?.name)}`, pageWidth / 2, doc.internal.pageSize.height - 10, { align: 'center' });
             }
         }
         
