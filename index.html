@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CEO Dashboard - Arijeem Insight 360</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Load Supabase FIRST -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -117,7 +118,7 @@
                 <!-- Loading Indicator -->
                 <div id="loadingIndicator" style="display: none;">
                     <div class="loading-spinner"></div>
-                    <p>Loading data...</p>
+                    <p>Loading data from Arijeem Insight 360...</p>
                 </div>
                 
                 <!-- Big Numbers -->
@@ -233,7 +234,7 @@
                                 </tr>
                             </thead>
                             <tbody id="salesTableBody">
-                                <tr><td colspan="8" style="text-align: center; padding: 40px; color: #666;">Loading sales data...</td></tr>
+                                <tr><td colspan="8" style="text-align: center; padding: 40px; color: #666;">Loading sales data from Arijeem Insight 360...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -353,13 +354,14 @@
                         <h3>DAILY REPORT READY</h3>
                         <p>Your daily business report is generated automatically at 8:00 PM</p>
                         <p>Last update: <span id="updateTime">Just now</span></p>
-                        <p><strong>Connection Status:</strong> <span id="connectionDetail">Checking...</span></p>
+                        <p><strong>Connection Status:</strong> <span id="connectionDetail">Checking connection to Arijeem Insight 360...</span></p>
                     </div>
                 </div>
                 
                 <!-- Footer -->
                 <div class="footer">
-                    <p><strong>Arijeem Insight 360 - CEO Dashboard</strong></p>
+                    <p><strong>Arijeem Insight 360 - CEO Dashboard v2.0</strong></p>
+                    <p>Connected to: https://arijeem-insight360.vercel.app</p>
                     <p>Secure access • Real-time data • Executive insights</p>
                     <p>© 2024 Arijeem Enterprises. All rights reserved.</p>
                 </div>
@@ -367,9 +369,277 @@
         </div>
     </div>
 
-    <!-- Scripts -->
+    <!-- Scripts in CORRECT ORDER -->
     <script src="config.js"></script>
-    <script src="database.js"></script>
     <script src="dashboard.js"></script>
+    <script src="database.js"></script>
+    
+    <!-- Loading Spinner CSS -->
+    <style>
+        .loading-spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #004B93;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        #loadingIndicator {
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 20px;
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        
+        #loadingIndicator p {
+            margin-top: 15px;
+            color: #666;
+            font-size: 1.1rem;
+        }
+        
+        /* Connection status styles */
+        .connection-good {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 8px 15px;
+            border-radius: 10px;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        
+        .connection-warning {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 8px 15px;
+            border-radius: 10px;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        
+        /* Stock badges */
+        .stock-badge {
+            display: inline-block;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-right: 10px;
+            margin-top: 5px;
+        }
+        
+        .stock-badge.critical {
+            background: linear-gradient(135deg, #fee2e2, #fecaca);
+            color: #dc2626;
+            border: 2px solid #fecaca;
+        }
+        
+        .stock-badge.warning {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            color: #92400e;
+            border: 2px solid #fde68a;
+        }
+        
+        .stock-badge.good {
+            background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+            color: #065f46;
+            border: 2px solid #a7f3d0;
+        }
+        
+        /* Status badges in tables */
+        .status-critical {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-weight: bold;
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+        
+        .status-warning {
+            background: #fef3c7;
+            color: #d97706;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-weight: bold;
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+        
+        .status-good {
+            background: #d1fae5;
+            color: #059669;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-weight: bold;
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+        
+        /* Payment method badges */
+        .payment-method {
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+        
+        /* Sale reason badges */
+        .sale-reason {
+            background: #f0f9ff;
+            color: #0c4a6e;
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            display: inline-block;
+        }
+        
+        /* Reorder status */
+        .reorder-needed {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            display: inline-block;
+        }
+        
+        .reorder-ok {
+            background: #d1fae5;
+            color: #059669;
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            display: inline-block;
+        }
+        
+        /* Overdue status */
+        .overdue-severe {
+            background: #fef2f2 !important;
+        }
+        
+        .overdue-severe td {
+            color: #dc2626;
+            font-weight: bold;
+        }
+        
+        .overdue-high {
+            background: #fffbeb !important;
+        }
+        
+        .overdue-high td {
+            color: #d97706;
+            font-weight: bold;
+        }
+        
+        /* Message styles */
+        .message {
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .big-numbers-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .analysis-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header-right {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .header-right button {
+                width: 100%;
+            }
+            
+            .section-header {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+            }
+            
+            .section-total {
+                width: 100%;
+                text-align: center;
+            }
+        }
+        
+        /* Print styles for PDF */
+        @media print {
+            .screen:not(#dashboardScreen),
+            .btn-refresh,
+            .btn-pdf,
+            .btn-logout,
+            .footer {
+                display: none !important;
+            }
+            
+            .dashboard-container {
+                padding: 0;
+                margin: 0;
+            }
+            
+            .section {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            
+            table {
+                font-size: 10pt !important;
+            }
+        }
+    </style>
+    
+    <script>
+        // Add some console logging for debugging
+        console.log('📱 CEO Dashboard HTML Loaded');
+        console.log('🔗 Supabase available:', typeof supabase !== 'undefined');
+        
+        // Check if we're online
+        window.addEventListener('online', () => {
+            console.log('🌐 Online - Ready to connect');
+            if (window.ceoDashboard) {
+                window.ceoDashboard.showMessage('Internet connection restored', 'success');
+            }
+        });
+        
+        window.addEventListener('offline', () => {
+            console.log('📵 Offline - Using cached data');
+            if (window.ceoDashboard) {
+                window.ceoDashboard.showMessage('No internet connection - Using cached data', 'warning');
+            }
+        });
+    </script>
 </body>
 </html>
