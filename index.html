@@ -5,10 +5,96 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CEO Dashboard - Arijeem Insight 360</title>
     <link rel="stylesheet" href="style.css">
+    
     <!-- Load Supabase FIRST -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Load jsPDF and AutoTable for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👑</text></svg>">
+    
+    <style>
+        /* Additional styles for better UX */
+        .system-status {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: #004B93;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .system-status.connected { background: #10b981; }
+        .system-status.disconnected { background: #ef4444; }
+        
+        .pdf-loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            flex-direction: column;
+            color: white;
+        }
+        
+        .pdf-loading h3 {
+            margin-top: 20px;
+            font-size: 1.5rem;
+        }
+        
+        .no-data-message {
+            text-align: center;
+            padding: 40px;
+            background: #f8fafc;
+            border-radius: 10px;
+            margin: 20px 0;
+            color: #666;
+        }
+        
+        .no-data-message h3 {
+            color: #004B93;
+            margin-bottom: 10px;
+        }
+        
+        .data-timestamp {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
 </head>
 <body>
+    <!-- System Status Indicator -->
+    <div id="systemStatus" class="system-status disconnected no-print">
+        🔴 Connecting...
+    </div>
+    
+    <!-- PDF Loading Overlay -->
+    <div id="pdfLoading" class="pdf-loading" style="display: none;">
+        <div class="loading-spinner-large"></div>
+        <h3>Generating Professional PDF Report...</h3>
+        <p>Please wait while we compile your business report</p>
+    </div>
+    
     <div class="container">
         <!-- SCREEN 1: CREATE ACCOUNT -->
         <div id="createAccountScreen" class="screen">
@@ -23,14 +109,14 @@
                     <p>Already have an account? <a href="#" id="goToLogin">Login here</a></p>
                 </div>
                 
-                <form class="form">
+                <form class="form" id="createForm">
                     <div class="input-group">
-                        <label>Full Name</label>
+                        <label>Full Name *</label>
                         <input type="text" id="ceoName" placeholder="Enter your full name" required>
                     </div>
                     
                     <div class="input-group">
-                        <label>Email Address</label>
+                        <label>Email Address *</label>
                         <input type="email" id="ceoEmail" placeholder="your.email@company.com" required>
                         <small>This will be your login username</small>
                     </div>
@@ -41,13 +127,13 @@
                     </div>
                     
                     <div class="input-group">
-                        <label>Password</label>
-                        <input type="password" id="ceoPassword" placeholder="Create a strong password" required>
+                        <label>Password *</label>
+                        <input type="password" id="ceoPassword" placeholder="Create a strong password" required minlength="6">
                         <small>Minimum 6 characters</small>
                     </div>
                     
                     <div class="input-group">
-                        <label>Confirm Password</label>
+                        <label>Confirm Password *</label>
                         <input type="password" id="ceoConfirmPassword" placeholder="Re-enter your password" required>
                     </div>
                     
@@ -63,6 +149,10 @@
                         CREATE ACCOUNT & ACCESS DASHBOARD
                     </button>
                 </form>
+                
+                <div class="data-timestamp">
+                    System Version: 2.0 | Connected to: Arijeem Insight 360
+                </div>
             </div>
         </div>
         
@@ -78,14 +168,14 @@
                     <p>New CEO? <a href="#" id="goToCreate">Create account</a></p>
                 </div>
                 
-                <form class="form">
+                <form class="form" id="loginForm">
                     <div class="input-group">
-                        <label>Email Address</label>
+                        <label>Email Address *</label>
                         <input type="email" id="loginEmail" placeholder="your.email@company.com" required>
                     </div>
                     
                     <div class="input-group">
-                        <label>Password</label>
+                        <label>Password *</label>
                         <input type="password" id="loginPassword" placeholder="Enter your password" required>
                     </div>
                     
@@ -94,6 +184,10 @@
                         ACCESS DASHBOARD
                     </button>
                 </form>
+                
+                <div class="data-timestamp">
+                    Secure Login | Database: Connected
+                </div>
             </div>
         </div>
         
@@ -101,17 +195,23 @@
         <div id="dashboardScreen" class="screen" style="display: none;">
             <div class="dashboard-container">
                 <!-- Header -->
-                <div class="dashboard-header">
+                <div class="dashboard-header no-print">
                     <div class="header-left">
                         <h1 id="dashboardTitle">👑 CEO DASHBOARD</h1>
                         <p id="welcomeMessage">Loading...</p>
-                        <p id="connectionStatus" class="connection-warning">Connecting to main system...</p>
-                        <div id="dataFreshness" style="display: none;"></div>
+                        <p id="connectionStatus" class="connection-warning">Connecting to Arijeem Insight 360...</p>
+                        <div id="dataFreshness" class="data-timestamp"></div>
                     </div>
                     <div class="header-right">
-                        <button class="btn-refresh" onclick="ceoDashboard.forceRefreshData()">🔄 REFRESH NOW</button>
-                        <button class="btn-pdf" onclick="ceoDashboard.generatePDFReport()">📄 GENERATE REPORT</button>
-                        <button class="btn-logout" onclick="ceoDashboard.logoutCEO()">🚪 LOGOUT</button>
+                        <button class="btn-refresh" onclick="ceoDashboard.forceRefreshData()" id="refreshBtn">
+                            🔄 REFRESH NOW
+                        </button>
+                        <button class="btn-pdf" onclick="ceoDashboard.generatePDFReport()" id="pdfBtn">
+                            📄 GENERATE REPORT
+                        </button>
+                        <button class="btn-logout" onclick="ceoDashboard.logoutCEO()">
+                            🚪 LOGOUT
+                        </button>
                     </div>
                 </div>
                 
@@ -119,10 +219,23 @@
                 <div id="loadingIndicator" style="display: none;">
                     <div class="loading-spinner"></div>
                     <p>Loading data from Arijeem Insight 360...</p>
+                    <p class="data-timestamp">Please wait while we fetch the latest business data</p>
+                </div>
+                
+                <!-- No Data Message -->
+                <div id="noDataMessage" class="no-data-message" style="display: none;">
+                    <h3>📊 No Data Available</h3>
+                    <p>We couldn't load data from the main system. This could be because:</p>
+                    <ul style="text-align: left; display: inline-block; margin: 15px 0;">
+                        <li>No sales recorded today</li>
+                        <li>Database connection issue</li>
+                        <li>No active internet connection</li>
+                    </ul>
+                    <p>Click <button class="btn-refresh" onclick="ceoDashboard.forceRefreshData()" style="padding: 8px 15px; margin: 0 5px;">🔄 REFRESH</button> to try again.</p>
                 </div>
                 
                 <!-- Big Numbers -->
-                <div class="big-numbers-row">
+                <div class="big-numbers-row" id="bigNumbersSection">
                     <div class="big-number-card sales">
                         <div class="big-icon">💰</div>
                         <div class="big-number" id="totalSales">₦0</div>
@@ -153,7 +266,7 @@
                 </div>
                 
                 <!-- Alert Box -->
-                <div class="alert-box">
+                <div class="alert-box" id="stockAlertBox">
                     <div class="alert-icon" id="stockAlertIcon">📊</div>
                     <div class="alert-content">
                         <h3 id="stockStatusText">CHECKING STOCK...</h3>
@@ -167,7 +280,7 @@
                 </div>
                 
                 <!-- Sales Analysis -->
-                <div class="section">
+                <div class="section" id="salesAnalysisSection">
                     <div class="section-header">
                         <h2>📈 SALES ANALYSIS</h2>
                         <div class="section-total" id="analysisTotal">0 transactions analyzed</div>
@@ -213,7 +326,7 @@
                 </div>
                 
                 <!-- Today's Sales -->
-                <div class="section">
+                <div class="section" id="salesSection">
                     <div class="section-header">
                         <h2>💰 TODAY'S SALES</h2>
                         <div class="section-total" id="salesTotal">Total: ₦0</div>
@@ -241,7 +354,7 @@
                 </div>
                 
                 <!-- Top Products -->
-                <div class="section">
+                <div class="section" id="topProductsSection">
                     <div class="section-header">
                         <h2>🏆 TOP PERFORMING PRODUCTS</h2>
                         <div class="section-total" id="topProductsTotal">Top 10 Products</div>
@@ -268,7 +381,7 @@
                 </div>
                 
                 <!-- Stock Levels -->
-                <div class="section">
+                <div class="section" id="stockSection">
                     <div class="section-header">
                         <h2>📦 STOCK LEVELS</h2>
                         <div class="section-total" id="stockTotal">Total Value: ₦0</div>
@@ -295,7 +408,7 @@
                 </div>
                 
                 <!-- Outstanding Debts -->
-                <div class="section">
+                <div class="section" id="debtsSection">
                     <div class="section-header">
                         <h2>💳 OUTSTANDING DEBTS</h2>
                         <div class="section-total" id="debtTotal">Total Owing: ₦0</div>
@@ -322,7 +435,7 @@
                 </div>
                 
                 <!-- Top Customers -->
-                <div class="section">
+                <div class="section" id="customersSection">
                     <div class="section-header">
                         <h2>👥 TOP CUSTOMERS</h2>
                         <div class="section-total" id="customersTotal">Top 10 Customers</div>
@@ -348,22 +461,24 @@
                 </div>
                 
                 <!-- Report Box -->
-                <div class="report-box">
+                <div class="report-box no-print">
                     <div class="report-icon">📊</div>
                     <div class="report-content">
                         <h3>DAILY REPORT READY</h3>
                         <p>Your daily business report is generated automatically at 8:00 PM</p>
                         <p>Last update: <span id="updateTime">Just now</span></p>
                         <p><strong>Connection Status:</strong> <span id="connectionDetail">Checking connection to Arijeem Insight 360...</span></p>
+                        <p class="data-timestamp">PDF reports now include professional tables and accurate stock data</p>
                     </div>
                 </div>
                 
                 <!-- Footer -->
-                <div class="footer">
+                <div class="footer no-print">
                     <p><strong>Arijeem Insight 360 - CEO Dashboard v2.0</strong></p>
                     <p>Connected to: https://arijeem-insight360.vercel.app</p>
                     <p>Secure access • Real-time data • Executive insights</p>
                     <p>© 2024 Arijeem Enterprises. All rights reserved.</p>
+                    <p class="data-timestamp" id="pageTimestamp"></p>
                 </div>
             </div>
         </div>
@@ -374,272 +489,126 @@
     <script src="dashboard.js"></script>
     <script src="database.js"></script>
     
-    <!-- Loading Spinner CSS -->
-    <style>
-        .loading-spinner {
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #004B93;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px auto;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        #loadingIndicator {
-            text-align: center;
-            padding: 40px;
-            background: white;
-            border-radius: 20px;
-            margin: 20px 0;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        }
-        
-        #loadingIndicator p {
-            margin-top: 15px;
-            color: #666;
-            font-size: 1.1rem;
-        }
-        
-        /* Connection status styles */
-        .connection-good {
-            background: #d1fae5;
-            color: #065f46;
-            padding: 8px 15px;
-            border-radius: 10px;
-            font-weight: bold;
-            display: inline-block;
-            margin-top: 10px;
-        }
-        
-        .connection-warning {
-            background: #fef3c7;
-            color: #92400e;
-            padding: 8px 15px;
-            border-radius: 10px;
-            font-weight: bold;
-            display: inline-block;
-            margin-top: 10px;
-        }
-        
-        /* Stock badges */
-        .stock-badge {
-            display: inline-block;
-            padding: 6px 15px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: bold;
-            margin-right: 10px;
-            margin-top: 5px;
-        }
-        
-        .stock-badge.critical {
-            background: linear-gradient(135deg, #fee2e2, #fecaca);
-            color: #dc2626;
-            border: 2px solid #fecaca;
-        }
-        
-        .stock-badge.warning {
-            background: linear-gradient(135deg, #fef3c7, #fde68a);
-            color: #92400e;
-            border: 2px solid #fde68a;
-        }
-        
-        .stock-badge.good {
-            background: linear-gradient(135deg, #d1fae5, #a7f3d0);
-            color: #065f46;
-            border: 2px solid #a7f3d0;
-        }
-        
-        /* Status badges in tables */
-        .status-critical {
-            background: #fee2e2;
-            color: #dc2626;
-            padding: 6px 12px;
-            border-radius: 15px;
-            font-weight: bold;
-            display: inline-block;
-            font-size: 0.9rem;
-        }
-        
-        .status-warning {
-            background: #fef3c7;
-            color: #d97706;
-            padding: 6px 12px;
-            border-radius: 15px;
-            font-weight: bold;
-            display: inline-block;
-            font-size: 0.9rem;
-        }
-        
-        .status-good {
-            background: #d1fae5;
-            color: #059669;
-            padding: 6px 12px;
-            border-radius: 15px;
-            font-weight: bold;
-            display: inline-block;
-            font-size: 0.9rem;
-        }
-        
-        /* Payment method badges */
-        .payment-method {
-            background: #e0f2fe;
-            color: #0369a1;
-            padding: 5px 10px;
-            border-radius: 12px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            display: inline-block;
-        }
-        
-        /* Sale reason badges */
-        .sale-reason {
-            background: #f0f9ff;
-            color: #0c4a6e;
-            padding: 5px 10px;
-            border-radius: 12px;
-            font-size: 0.9rem;
-            display: inline-block;
-        }
-        
-        /* Reorder status */
-        .reorder-needed {
-            background: #fee2e2;
-            color: #dc2626;
-            padding: 5px 10px;
-            border-radius: 12px;
-            font-weight: bold;
-            font-size: 0.9rem;
-            display: inline-block;
-        }
-        
-        .reorder-ok {
-            background: #d1fae5;
-            color: #059669;
-            padding: 5px 10px;
-            border-radius: 12px;
-            font-weight: bold;
-            font-size: 0.9rem;
-            display: inline-block;
-        }
-        
-        /* Overdue status */
-        .overdue-severe {
-            background: #fef2f2 !important;
-        }
-        
-        .overdue-severe td {
-            color: #dc2626;
-            font-weight: bold;
-        }
-        
-        .overdue-high {
-            background: #fffbeb !important;
-        }
-        
-        .overdue-high td {
-            color: #d97706;
-            font-weight: bold;
-        }
-        
-        /* Message styles */
-        .message {
-            animation: slideIn 0.3s ease;
-        }
-        
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-        
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .big-numbers-row {
-                grid-template-columns: 1fr;
-            }
-            
-            .analysis-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .header-right {
-                flex-direction: column;
-                gap: 10px;
-            }
-            
-            .header-right button {
-                width: 100%;
-            }
-            
-            .section-header {
-                flex-direction: column;
-                text-align: center;
-                gap: 15px;
-            }
-            
-            .section-total {
-                width: 100%;
-                text-align: center;
-            }
-        }
-        
-        /* Print styles for PDF */
-        @media print {
-            .screen:not(#dashboardScreen),
-            .btn-refresh,
-            .btn-pdf,
-            .btn-logout,
-            .footer {
-                display: none !important;
-            }
-            
-            .dashboard-container {
-                padding: 0;
-                margin: 0;
-            }
-            
-            .section {
-                break-inside: avoid;
-                page-break-inside: avoid;
-            }
-            
-            table {
-                font-size: 10pt !important;
-            }
-        }
-    </style>
-    
+    <!-- Additional JavaScript for enhanced functionality -->
     <script>
-        // Add some console logging for debugging
-        console.log('📱 CEO Dashboard HTML Loaded');
-        console.log('🔗 Supabase available:', typeof supabase !== 'undefined');
+        // Set page timestamp
+        document.getElementById('pageTimestamp').textContent = 
+            `Page loaded: ${new Date().toLocaleString()}`;
         
-        // Check if we're online
+        // Enhanced loading spinner CSS
+        const style = document.createElement('style');
+        style.textContent = `
+            .loading-spinner {
+                border: 5px solid #f3f3f3;
+                border-top: 5px solid #004B93;
+                border-radius: 50%;
+                width: 50px;
+                height: 50px;
+                animation: spin 1s linear infinite;
+                margin: 0 auto 20px auto;
+            }
+            
+            .loading-spinner-large {
+                border: 8px solid rgba(255, 255, 255, 0.3);
+                border-top: 8px solid #ffffff;
+                border-radius: 50%;
+                width: 80px;
+                height: 80px;
+                animation: spin 1s linear infinite;
+                margin: 0 auto 30px auto;
+            }
+            
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            
+            @keyframes pulse {
+                0% { opacity: 1; }
+                50% { opacity: 0.7; }
+                100% { opacity: 1; }
+            }
+            
+            .pulsing {
+                animation: pulse 2s infinite;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Monitor system status
+        function updateSystemStatus(status) {
+            const statusEl = document.getElementById('systemStatus');
+            if (statusEl) {
+                statusEl.textContent = status === 'connected' ? '🟢 Connected' : '🔴 Disconnected';
+                statusEl.className = `system-status ${status}`;
+            }
+        }
+        
+        // Initial status check
+        setTimeout(() => {
+            if (window.ceoDB) {
+                updateSystemStatus(window.ceoDB.isConnected ? 'connected' : 'disconnected');
+            }
+        }, 2000);
+        
+        // Auto-update status every 30 seconds
+        setInterval(() => {
+            if (window.ceoDB && window.ceoDB.isConnected) {
+                updateSystemStatus('connected');
+            }
+        }, 30000);
+        
+        // Form validation
+        document.getElementById('createForm')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            ceoDashboard.createCEOAccount();
+        });
+        
+        document.getElementById('loginForm')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            ceoDashboard.loginCEO();
+        });
+        
+        // Online/offline detection
         window.addEventListener('online', () => {
-            console.log('🌐 Online - Ready to connect');
-            if (window.ceoDashboard) {
+            console.log('🌐 Internet connection restored');
+            updateSystemStatus('connected');
+            if (window.ceoDashboard && window.ceoDashboard.currentCEO) {
                 window.ceoDashboard.showMessage('Internet connection restored', 'success');
             }
         });
         
         window.addEventListener('offline', () => {
-            console.log('📵 Offline - Using cached data');
-            if (window.ceoDashboard) {
+            console.log('📵 No internet connection');
+            updateSystemStatus('disconnected');
+            if (window.ceoDashboard && window.ceoDashboard.currentCEO) {
                 window.ceoDashboard.showMessage('No internet connection - Using cached data', 'warning');
             }
         });
+        
+        // Show PDF loading
+        function showPDFLoading(show) {
+            const pdfLoading = document.getElementById('pdfLoading');
+            if (pdfLoading) {
+                pdfLoading.style.display = show ? 'flex' : 'none';
+            }
+        }
+        
+        // Override PDF generation to show loading
+        const originalGeneratePDF = window.ceoDashboard?.generatePDFReport;
+        if (originalGeneratePDF) {
+            window.ceoDashboard.generatePDFReport = async function() {
+                showPDFLoading(true);
+                try {
+                    await originalGeneratePDF.call(this);
+                } finally {
+                    setTimeout(() => showPDFLoading(false), 1000);
+                }
+            };
+        }
+        
+        console.log('🚀 CEO Dashboard System Initialized');
+        console.log('🙏 In Jesus Name, This System Will Work Perfectly!');
     </script>
 </body>
 </html>
