@@ -1,4 +1,4 @@
-// CEO DASHBOARD CONTROLLER - COMPLETE WORKING VERSION WITH FIXED PDF
+// CEO DASHBOARD CONTROLLER - SIMPLIFIED PDF VERSION
 console.log('👑 Starting CEO Dashboard...');
 
 class CEODashboard {
@@ -780,7 +780,7 @@ class CEODashboard {
         }, 2000);
     }
     
-    // PDF REPORT GENERATION - FIXED VERSION (NO SYMBOL MIXING)
+    // PDF REPORT GENERATION - SIMPLIFIED VERSION
     async generatePDFReport() {
         if (this.isGeneratingPDF) return;
         
@@ -806,8 +806,8 @@ class CEODashboard {
             // Load AutoTable plugin if not available
             await this.loadAutoTablePlugin();
             
-            // Generate clean PDF with proper formatting
-            await this.createCleanPDFReport();
+            // Generate PDF with clean data
+            await this.createSimplePDF();
             
             this.showMessage('✅ Professional PDF report generated successfully!', 'success');
             
@@ -848,137 +848,16 @@ class CEODashboard {
         });
     }
     
-    // ULTRA STRONG TEXT CLEANING FUNCTION - FIXES & SYMBOL ISSUE
-    cleanTextForPDF(text) {
-        if (!text && text !== 0) return 'N/A';
-        
-        // Convert to string
-        let str = String(text);
-        
-        // Remove ALL special symbols except basic punctuation
-        str = str.replace(/[&]/g, 'and'); // Replace & with 'and'
-        str = str.replace(/[^\w\s.,-]/g, ''); // Remove everything except letters, numbers, spaces, ., ,, -
-        str = str.replace(/\s+/g, ' '); // Replace multiple spaces with single space
-        str = str.trim();
-        
-        // Limit length for PDF cells
-        if (str.length > 40) {
-            str = str.substring(0, 37) + '...';
-        }
-        
-        return str || 'N/A';
-    }
-    
-    // Format currency properly for PDF
-    formatCurrencyForPDF(amount) {
-        if (!amount && amount !== 0) return '₦0';
-        return `₦${Math.round(Number(amount)).toLocaleString()}`;
-    }
-    
-    // Get clean data for PDF
-    getPDFData() {
-        const { summary, salesAnalysis, products, sales, debts, customers } = this.businessData;
-        
-        // Calculate totals
-        const totalStockValue = products.reduce((sum, p) => {
-            const qty = p.current_qty || p.quantity || 0;
-            const price = p.price || p.selling_price || 0;
-            return sum + (qty * price);
-        }, 0);
-        
-        const actualTotalSales = summary?.totalSales || sales.reduce((sum, s) => sum + (s.total_price || s.amount || 0), 0);
-        const actualProductsSold = summary?.productsSold || sales.reduce((sum, s) => sum + (s.quantity || 1), 0);
-        const actualTotalDebt = summary?.totalDebt || debts.reduce((sum, d) => sum + (d.amount || d.amount_owing || 0), 0);
-        const actualTransactionCount = summary?.transactionCount || sales.length;
-        const actualCustomerCount = summary?.activeCustomers || customers.length;
-        const actualProfit = Math.round(salesAnalysis?.totalProfit || (actualTotalSales * 0.3));
-        const actualAverageSale = Math.round(salesAnalysis?.averageSale || (actualTotalSales / Math.max(actualTransactionCount, 1)));
-        const actualProfitMargin = salesAnalysis?.profitMargin || '30';
-        
-        return {
-            summary: {
-                totalSales: actualTotalSales,
-                productsSold: actualProductsSold,
-                totalDebt: actualTotalDebt,
-                transactionCount: actualTransactionCount,
-                customerCount: actualCustomerCount,
-                stockValue: totalStockValue,
-                profit: actualProfit,
-                profitMargin: actualProfitMargin,
-                averageSale: actualAverageSale
-            },
-            products: products.slice(0, CEO_CONFIG.MAX_PDF_PRODUCTS || 30).map(p => ({
-                name: this.cleanTextForPDF(p.name),
-                quantity: p.current_qty || 0,
-                minQty: p.min_qty || CEO_CONFIG.STOCK_WARNING,
-                price: p.price || p.selling_price || 0,
-                value: (p.current_qty || 0) * (p.price || p.selling_price || 0),
-                status: this.getStockStatus(p.current_qty || 0)
-            })),
-            sales: sales.slice(0, 50).map(s => ({
-                time: s.time || new Date(s.sale_date || s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                customer: this.cleanTextForPDF(s.customer_name),
-                product: this.cleanTextForPDF(s.product_name),
-                quantity: s.quantity || 1,
-                amount: s.total_price || s.amount || 0,
-                payment: this.cleanTextForPDF(s.payment_method),
-                profit: Math.round((s.total_price || 0) * 0.3)
-            })),
-            debts: debts.slice(0, 50).map(d => ({
-                customer: this.cleanTextForPDF(d.customer_name),
-                amount: d.amount || d.amount_owing || 0,
-                days: d.days_owing || this.calculateDaysOwing(d.created_at),
-                phone: this.cleanTextForPDF(d.phone),
-                priority: this.getDebtPriority(d.days_owing || 0)
-            })),
-            customers: customers.slice(0, 20).map(c => ({
-                name: this.cleanTextForPDF(c.name),
-                totalSpent: c.total_spent || 0,
-                visits: c.purchase_count || 0,
-                averageSpend: Math.round((c.total_spent || 0) / Math.max(c.purchase_count || 1, 1)),
-                lastVisit: c.last_purchase ? new Date(c.last_purchase).toLocaleDateString() : 'Never',
-                phone: this.cleanTextForPDF(c.phone)
-            }))
-        };
-    }
-    
-    getStockStatus(quantity) {
-        if (quantity <= CEO_CONFIG.STOCK_CRITICAL) return 'CRITICAL';
-        if (quantity <= CEO_CONFIG.STOCK_WARNING) return 'LOW';
-        return 'GOOD';
-    }
-    
-    getDebtPriority(days) {
-        if (days > 90) return 'SEVERE';
-        if (days > 30) return 'HIGH';
-        return 'NORMAL';
-    }
-    
-    calculateDaysOwing(dateString) {
-        if (!dateString) return 0;
-        try {
-            const debtDate = new Date(dateString);
-            const today = new Date();
-            const diffTime = Math.abs(today - debtDate);
-            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        } catch (e) {
-            return 0;
-        }
-    }
-    
-    async createCleanPDFReport() {
+    // SIMPLIFIED PDF CREATION - NO SYMBOLS
+    async createSimplePDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('p', 'mm', 'a4');
         
         const pageWidth = doc.internal.pageSize.width;
         const margin = 20;
-        
-        // Get clean data
-        const pdfData = this.getPDFData();
         const reportDate = new Date();
         
-        // ===== PAGE 1: EXECUTIVE SUMMARY =====
-        // Header
+        // ===== PAGE 1: HEADER =====
         doc.setFillColor(0, 75, 147);
         doc.rect(0, 0, pageWidth, 40, 'F');
         
@@ -994,31 +873,37 @@ class CEODashboard {
         // Report Info
         doc.setFontSize(11);
         doc.setTextColor(100, 100, 100);
-        doc.text(`Report Date: ${reportDate.toLocaleDateString('en-NG')}`, margin, yPos);
-        doc.text(`Report Time: ${reportDate.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}`, pageWidth - margin, yPos, { align: 'right' });
+        doc.text(`Date: ${reportDate.toLocaleDateString()}`, margin, yPos);
+        doc.text(`Time: ${reportDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`, pageWidth - margin, yPos, { align: 'right' });
         
         yPos += 15;
         
-        // Executive Summary Title
+        // ===== SUMMARY DATA =====
+        const { summary, salesAnalysis, products, sales, debts, customers } = this.businessData;
+        
+        // Calculate totals
+        const totalSales = summary?.totalSales || 0;
+        const productsSold = summary?.productsSold || 0;
+        const totalDebt = summary?.totalDebt || 0;
+        const transactionCount = summary?.transactionCount || 0;
+        const customerCount = summary?.activeCustomers || 0;
+        
+        // Summary Title
         doc.setFontSize(16);
         doc.setTextColor(0, 75, 147);
-        doc.text('EXECUTIVE SUMMARY', margin, yPos);
+        doc.text('BUSINESS SUMMARY', margin, yPos);
         
         yPos += 10;
         
-        // Summary Table - NO SYMBOLS mixed with text
+        // Summary Table - SIMPLE DATA ONLY
         const summaryData = [
-            ['Business Metric', 'Value'],
-            ['Total Sales Today', this.formatCurrencyForPDF(pdfData.summary.totalSales)],
-            ['Products Sold Today', pdfData.summary.productsSold.toLocaleString()],
-            ['Sales Transactions', pdfData.summary.transactionCount.toLocaleString()],
-            ['Average Sale Value', this.formatCurrencyForPDF(pdfData.summary.averageSale)],
-            ['Total Profit', this.formatCurrencyForPDF(pdfData.summary.profit)],
-            ['Profit Margin', pdfData.summary.profitMargin + '%'],
-            ['Stock Value', this.formatCurrencyForPDF(pdfData.summary.stockValue)],
-            ['Products in Stock', pdfData.products.length.toLocaleString()],
-            ['Outstanding Debts', this.formatCurrencyForPDF(pdfData.summary.totalDebt)],
-            ['Active Customers', pdfData.summary.customerCount.toLocaleString()]
+            ['Metric', 'Value'],
+            ['Total Sales', 'NGN ' + totalSales.toLocaleString()],
+            ['Products Sold', productsSold.toLocaleString()],
+            ['Transactions', transactionCount.toLocaleString()],
+            ['Active Customers', customerCount.toLocaleString()],
+            ['Total Debt', 'NGN ' + totalDebt.toLocaleString()],
+            ['Stock Items', products.length.toString()]
         ];
         
         doc.autoTable({
@@ -1028,145 +913,125 @@ class CEODashboard {
             theme: 'grid',
             headStyles: { fillColor: [0, 75, 147], textColor: [255, 255, 255], fontSize: 11 },
             bodyStyles: { fontSize: 10 },
-            alternateRowStyles: { fillColor: [245, 245, 245] },
             margin: { left: margin, right: margin }
         });
         
-        // ===== PAGE 2: SALES DETAILS =====
-        if (pdfData.sales.length > 0) {
+        // ===== PAGE 2: SALES =====
+        if (sales.length > 0) {
             doc.addPage();
             yPos = 20;
             
             doc.setFontSize(16);
             doc.setTextColor(0, 75, 147);
-            doc.text('TODAYS SALES DETAILS', margin, yPos);
+            doc.text('RECENT SALES', margin, yPos);
             
             yPos += 10;
             
-            // Prepare sales data for table - NO SYMBOLS in cells
-            const salesTableData = pdfData.sales.map(sale => [
-                sale.time,
-                sale.customer,
-                sale.product,
-                sale.quantity,
-                this.formatCurrencyForPDF(sale.amount),
-                sale.payment,
-                this.formatCurrencyForPDF(sale.profit)
-            ]);
+            // Prepare simple sales data
+            const salesData = sales.slice(0, 30).map(sale => {
+                // Use SIMPLE values - no HTML, no special formatting
+                const customer = sale.customer_name || 'Customer';
+                const product = sale.product_name || 'Product';
+                const quantity = sale.quantity || 0;
+                const amount = sale.total_price || 0;
+                const profit = Math.round(amount * 0.3);
+                
+                return [
+                    sale.time || 'N/A',
+                    customer.substring(0, 20), // Limit length
+                    product.substring(0, 20),  // Limit length
+                    quantity.toString(),
+                    amount.toLocaleString(),
+                    profit.toLocaleString()
+                ];
+            });
             
-            salesTableData.unshift(['Time', 'Customer', 'Product', 'Qty', 'Amount', 'Payment', 'Profit']);
+            salesData.unshift(['Time', 'Customer', 'Product', 'Qty', 'Amount', 'Profit']);
             
             doc.autoTable({
                 startY: yPos,
-                head: [salesTableData[0]],
-                body: salesTableData.slice(1),
+                head: [salesData[0]],
+                body: salesData.slice(1),
                 theme: 'grid',
                 headStyles: { fillColor: [0, 75, 147], textColor: [255, 255, 255], fontSize: 10 },
                 bodyStyles: { fontSize: 9 },
-                alternateRowStyles: { fillColor: [250, 250, 250] },
-                margin: { left: margin, right: margin },
-                pageBreak: 'auto',
-                styles: { overflow: 'linebreak', cellWidth: 'wrap' }
+                margin: { left: margin, right: margin }
             });
         }
         
-        // ===== PAGE 3: STOCK INVENTORY =====
-        if (pdfData.products.length > 0) {
+        // ===== PAGE 3: STOCK =====
+        if (products.length > 0) {
             doc.addPage();
             yPos = 20;
             
             doc.setFontSize(16);
             doc.setTextColor(0, 75, 147);
-            doc.text('STOCK INVENTORY REPORT', margin, yPos);
+            doc.text('STOCK INVENTORY', margin, yPos);
             
             yPos += 10;
             
-            // Stock Summary
-            doc.setFontSize(11);
-            doc.setTextColor(0, 0, 0);
+            // Prepare simple stock data
+            const stockData = products.slice(0, 30).map(product => {
+                const qty = product.current_qty || 0;
+                const price = product.price || 0;
+                const value = qty * price;
+                let status = 'Good';
+                if (qty <= CEO_CONFIG.STOCK_CRITICAL) status = 'Critical';
+                else if (qty <= CEO_CONFIG.STOCK_WARNING) status = 'Low';
+                
+                return [
+                    (product.name || 'Product').substring(0, 25),
+                    qty.toLocaleString(),
+                    price.toLocaleString(),
+                    value.toLocaleString(),
+                    status
+                ];
+            });
             
-            const criticalCount = pdfData.products.filter(p => p.status === 'CRITICAL').length;
-            const lowCount = pdfData.products.filter(p => p.status === 'LOW').length;
-            const goodCount = pdfData.products.filter(p => p.status === 'GOOD').length;
-            
-            doc.text(`Total Products: ${pdfData.products.length}`, margin, yPos);
-            doc.text(`Critical Stock: ${criticalCount}`, margin + 70, yPos);
-            doc.text(`Low Stock: ${lowCount}`, margin + 140, yPos);
-            yPos += 8;
-            doc.text(`Good Stock: ${goodCount}`, margin, yPos);
-            doc.text(`Total Stock Value: ${this.formatCurrencyForPDF(pdfData.summary.stockValue)}`, margin + 70, yPos);
-            
-            yPos += 15;
-            
-            // Prepare stock data for table - NO SYMBOLS in cells
-            const stockTableData = pdfData.products.map(product => [
-                product.name,
-                product.quantity.toLocaleString(),
-                product.minQty.toLocaleString(),
-                this.formatCurrencyForPDF(product.price),
-                this.formatCurrencyForPDF(product.value),
-                product.status,
-                product.quantity <= product.minQty ? 'YES' : 'NO'
-            ]);
-            
-            stockTableData.unshift(['Product Name', 'Current Stock', 'Min Level', 'Unit Price', 'Stock Value', 'Status', 'Reorder']);
+            stockData.unshift(['Product', 'Quantity', 'Price', 'Value', 'Status']);
             
             doc.autoTable({
                 startY: yPos,
-                head: [stockTableData[0]],
-                body: stockTableData.slice(1),
+                head: [stockData[0]],
+                body: stockData.slice(1),
                 theme: 'grid',
                 headStyles: { fillColor: [0, 75, 147], textColor: [255, 255, 255], fontSize: 10 },
                 bodyStyles: { fontSize: 9 },
-                alternateRowStyles: { fillColor: [250, 250, 250] },
-                margin: { left: margin, right: margin },
-                pageBreak: 'auto',
-                styles: { overflow: 'linebreak', cellWidth: 'wrap' },
-                willDrawCell: (data) => {
-                    // Color code status cells
-                    if (data.column.index === 5) {
-                        const status = data.cell.raw;
-                        if (status === 'CRITICAL') {
-                            doc.setFillColor(254, 226, 226);
-                            doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
-                            doc.setTextColor(220, 38, 38);
-                        } else if (status === 'LOW') {
-                            doc.setFillColor(254, 243, 199);
-                            doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
-                            doc.setTextColor(217, 119, 6);
-                        }
-                    }
-                }
+                margin: { left: margin, right: margin }
             });
         }
         
         // ===== PAGE 4: DEBTS & CUSTOMERS =====
-        if (pdfData.debts.length > 0 || pdfData.customers.length > 0) {
+        const hasDebts = debts && debts.length > 0;
+        const hasCustomers = customers && customers.length > 0;
+        
+        if (hasDebts || hasCustomers) {
             doc.addPage();
             yPos = 20;
             
-            // Outstanding Debts
-            if (pdfData.debts.length > 0) {
+            if (hasDebts) {
                 doc.setFontSize(16);
                 doc.setTextColor(0, 75, 147);
                 doc.text('OUTSTANDING DEBTS', margin, yPos);
                 
                 yPos += 10;
                 
-                const debtsTableData = pdfData.debts.map(debt => [
-                    debt.customer,
-                    this.formatCurrencyForPDF(debt.amount),
-                    debt.days + ' days',
-                    debt.phone,
-                    debt.priority
-                ]);
+                const debtsData = debts.slice(0, 20).map(debt => {
+                    const days = debt.days_owing || 0;
+                    return [
+                        (debt.customer_name || 'Customer').substring(0, 20),
+                        (debt.amount || 0).toLocaleString(),
+                        days.toString() + ' days',
+                        (debt.phone || 'N/A').substring(0, 15)
+                    ];
+                });
                 
-                debtsTableData.unshift(['Customer', 'Amount Owed', 'Days Owing', 'Contact', 'Priority']);
+                debtsData.unshift(['Customer', 'Amount', 'Days', 'Phone']);
                 
                 doc.autoTable({
                     startY: yPos,
-                    head: [debtsTableData[0]],
-                    body: debtsTableData.slice(1),
+                    head: [debtsData[0]],
+                    body: debtsData.slice(1),
                     theme: 'grid',
                     headStyles: { fillColor: [220, 38, 38], textColor: [255, 255, 255], fontSize: 10 },
                     bodyStyles: { fontSize: 9 },
@@ -1176,29 +1041,32 @@ class CEODashboard {
                 yPos = doc.lastAutoTable.finalY + 20;
             }
             
-            // Top Customers
-            if (pdfData.customers.length > 0) {
+            if (hasCustomers) {
                 doc.setFontSize(16);
                 doc.setTextColor(0, 75, 147);
                 doc.text('TOP CUSTOMERS', margin, yPos);
                 
                 yPos += 10;
                 
-                const customersTableData = pdfData.customers.map(customer => [
-                    customer.name,
-                    this.formatCurrencyForPDF(customer.totalSpent),
-                    customer.visits,
-                    this.formatCurrencyForPDF(customer.averageSpend),
-                    customer.lastVisit,
-                    customer.phone
-                ]);
+                const customersData = customers.slice(0, 15).map(customer => {
+                    const lastPurchase = customer.last_purchase ? 
+                        new Date(customer.last_purchase).toLocaleDateString() : 'Never';
+                    
+                    return [
+                        (customer.name || 'Customer').substring(0, 20),
+                        (customer.total_spent || 0).toLocaleString(),
+                        (customer.purchase_count || 0).toString(),
+                        lastPurchase,
+                        (customer.phone || 'N/A').substring(0, 15)
+                    ];
+                });
                 
-                customersTableData.unshift(['Customer Name', 'Total Spent', 'Visits', 'Average Spend', 'Last Visit', 'Contact']);
+                customersData.unshift(['Customer', 'Total Spent', 'Visits', 'Last Visit', 'Phone']);
                 
                 doc.autoTable({
                     startY: yPos,
-                    head: [customersTableData[0]],
-                    body: customersTableData.slice(1),
+                    head: [customersData[0]],
+                    body: customersData.slice(1),
                     theme: 'grid',
                     headStyles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontSize: 10 },
                     bodyStyles: { fontSize: 9 },
@@ -1207,7 +1075,7 @@ class CEODashboard {
             }
         }
         
-        // ===== FINAL PAGE: FOOTER =====
+        // ===== FOOTER =====
         const totalPages = doc.internal.getNumberOfPages();
         
         for (let i = 1; i <= totalPages; i++) {
@@ -1218,28 +1086,21 @@ class CEODashboard {
             doc.setTextColor(100, 100, 100);
             doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, doc.internal.pageSize.height - 10, { align: 'right' });
             
-            // Footer line
-            doc.setDrawColor(200, 200, 200);
-            doc.line(margin, doc.internal.pageSize.height - 15, pageWidth - margin, doc.internal.pageSize.height - 15);
-            
             // Footer text on last page
             if (i === totalPages) {
-                doc.setFontSize(10);
-                doc.setTextColor(0, 75, 147);
-                doc.text('ARIJEEM INSIGHT 360 - CEO DASHBOARD', pageWidth / 2, doc.internal.pageSize.height - 25, { align: 'center' });
                 doc.setFontSize(9);
+                doc.setTextColor(0, 75, 147);
+                doc.text('ARIJEEM INSIGHT 360 - CEO REPORT', pageWidth / 2, doc.internal.pageSize.height - 15, { align: 'center' });
                 doc.setTextColor(100, 100, 100);
-                doc.text('Confidential Document - For Executive Use Only', pageWidth / 2, doc.internal.pageSize.height - 20, { align: 'center' });
-                doc.text(`Report Generated: ${reportDate.toLocaleString()}`, pageWidth / 2, doc.internal.pageSize.height - 15, { align: 'center' });
-                doc.text(`Generated By: ${this.cleanTextForPDF(this.currentCEO?.name)}`, pageWidth / 2, doc.internal.pageSize.height - 10, { align: 'center' });
+                doc.text(`Generated on ${reportDate.toLocaleString()}`, pageWidth / 2, doc.internal.pageSize.height - 10, { align: 'center' });
             }
         }
         
         // SAVE PDF
-        const filename = `Arijeem-CEO-Report-${reportDate.toISOString().split('T')[0]}.pdf`;
+        const filename = `CEO-Report-${reportDate.getFullYear()}-${(reportDate.getMonth()+1).toString().padStart(2, '0')}-${reportDate.getDate().toString().padStart(2, '0')}.pdf`;
         doc.save(filename);
         
-        console.log('✅ PDF generated successfully with clean text:', filename);
+        console.log('✅ PDF generated successfully:', filename);
     }
     
     // LOGOUT
@@ -1282,7 +1143,4 @@ document.addEventListener('DOMContentLoaded', () => {
     window.ceoDashboard = new CEODashboard();
     window.ceoDashboard.showCreateAccountScreen();
     console.log('✅ CEO Dashboard started successfully');
-    
-    // Log in Jesus' name
-    console.log('🙏 In Jesus Name, This Dashboard Will Work Perfectly!');
 });
