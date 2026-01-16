@@ -66,6 +66,23 @@ class CEODashboard {
                 this.showCreateAccountScreen();
             };
         }
+        
+        // Form submissions
+        const createForm = document.getElementById('createForm');
+        if (createForm) {
+            createForm.onsubmit = (e) => {
+                e.preventDefault();
+                this.createCEOAccount();
+            };
+        }
+        
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm) {
+            loginForm.onsubmit = (e) => {
+                e.preventDefault();
+                this.loginCEO();
+            };
+        }
     }
     
     startPeriodicUpdates() {
@@ -121,6 +138,11 @@ class CEODashboard {
                 return;
             }
             
+            if (password.length < CEO_CONFIG.PASSWORD_MIN) {
+                this.showMessage(`Password must be at least ${CEO_CONFIG.PASSWORD_MIN} characters`, 'error');
+                return;
+            }
+            
             if (password !== confirm) {
                 this.showMessage('Passwords do not match', 'error');
                 return;
@@ -159,7 +181,7 @@ class CEODashboard {
             
             this.showMessage('Account created! Logging you in...', 'success');
             
-            // Auto login
+            // Auto login after 1 second
             setTimeout(async () => {
                 const login = await window.ceoDB.loginCEO(email, password);
                 
@@ -180,15 +202,16 @@ class CEODashboard {
         } catch (error) {
             console.error('Create account error:', error);
             this.showMessage('Failed to create account', 'error');
-        } finally {
-            setTimeout(() => {
-                const btn = document.querySelector('#createAccountScreen .btn-primary');
-                if (btn) {
-                    btn.innerHTML = '✅ CREATE ACCOUNT & ACCESS DASHBOARD';
-                    btn.disabled = false;
-                }
-            }, 2000);
         }
+        
+        // Reset button after 2 seconds
+        setTimeout(() => {
+            const btn = document.querySelector('#createAccountScreen .btn-primary');
+            if (btn) {
+                btn.innerHTML = '✅ CREATE ACCOUNT & ACCESS DASHBOARD';
+                btn.disabled = false;
+            }
+        }, 2000);
     }
     
     // LOGIN CEO
@@ -229,12 +252,13 @@ class CEODashboard {
         } catch (error) {
             console.error('Login error:', error);
             this.showMessage('Login failed', 'error');
-        } finally {
-            const btn = document.querySelector('#loginScreen .btn-primary');
-            if (btn) {
-                btn.innerHTML = '🔑 ACCESS DASHBOARD';
-                btn.disabled = false;
-            }
+        }
+        
+        // Reset button
+        const btn = document.querySelector('#loginScreen .btn-primary');
+        if (btn) {
+            btn.innerHTML = '🔑 ACCESS DASHBOARD';
+            btn.disabled = false;
         }
     }
     
@@ -278,11 +302,12 @@ class CEODashboard {
         }
     }
     
-    // LOAD BUSINESS DATA - FIXED
+    // LOAD BUSINESS DATA
     async loadBusinessData(silent = false) {
         try {
             if (!silent) {
                 this.showLoadingIndicator(true);
+                this.hideNoDataMessage();
             }
             
             console.log('🔄 Loading business data...');
@@ -299,18 +324,23 @@ class CEODashboard {
             this.updateConnectionStatus();
             
             if (!silent) {
-                this.showMessage('Data loaded successfully', 'success');
+                if (this.businessData.sales.length > 0 || this.businessData.products.length > 0) {
+                    this.showMessage('Data loaded successfully', 'success');
+                } else {
+                    this.showNoDataMessage();
+                }
             }
             
         } catch (error) {
             console.error('❌ Load business data error:', error);
             if (!silent) {
                 this.showMessage('Failed to load data', 'error');
+                this.showNoDataMessage();
             }
-        } finally {
-            if (!silent) {
-                this.showLoadingIndicator(false);
-            }
+        }
+        
+        if (!silent) {
+            this.showLoadingIndicator(false);
         }
     }
     
@@ -321,17 +351,31 @@ class CEODashboard {
         }
     }
     
+    showNoDataMessage() {
+        const noDataEl = document.getElementById('noDataMessage');
+        if (noDataEl) {
+            noDataEl.style.display = 'block';
+        }
+    }
+    
+    hideNoDataMessage() {
+        const noDataEl = document.getElementById('noDataMessage');
+        if (noDataEl) {
+            noDataEl.style.display = 'none';
+        }
+    }
+    
     updateConnectionStatus() {
         const statusEl = document.getElementById('connectionStatus');
         const detailEl = document.getElementById('connectionDetail');
         
         if (this.businessData?.isConnected) {
             if (statusEl) {
-                statusEl.textContent = '✅ Connected to main system';
+                statusEl.textContent = '✅ Connected to Arijeem Insight 360';
                 statusEl.className = 'connection-good';
             }
             if (detailEl) {
-                detailEl.textContent = `Live data | ${this.businessData.sales.length} sales today`;
+                detailEl.textContent = `Live data | ${this.businessData.sales.length} sales today | ${this.businessData.products.length} products`;
             }
         } else {
             if (statusEl) {
@@ -342,9 +386,28 @@ class CEODashboard {
                 detailEl.textContent = 'Limited functionality - No active connection';
             }
         }
+        
+        // Update data freshness
+        const freshnessEl = document.getElementById('dataFreshness');
+        if (freshnessEl && this.businessData?.summary?.lastUpdate) {
+            const lastUpdate = new Date(this.businessData.summary.lastUpdate);
+            const now = new Date();
+            const diffMinutes = Math.floor((now - lastUpdate) / (1000 * 60));
+            
+            if (diffMinutes < 5) {
+                freshnessEl.textContent = `Data updated ${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
+                freshnessEl.style.color = '#10b981';
+            } else if (diffMinutes < 30) {
+                freshnessEl.textContent = `Data updated ${diffMinutes} minutes ago`;
+                freshnessEl.style.color = '#f59e0b';
+            } else {
+                freshnessEl.textContent = `Data updated ${Math.floor(diffMinutes / 60)} hours ago`;
+                freshnessEl.style.color = '#ef4444';
+            }
+        }
     }
     
-    // UPDATE DASHBOARD - FIXED
+    // UPDATE DASHBOARD
     updateDashboard() {
         if (!this.businessData) {
             console.log('⚠️ No business data to update');
@@ -432,10 +495,10 @@ class CEODashboard {
         const totalProfitEl = document.getElementById('totalProfit');
         const analysisTotalEl = document.getElementById('analysisTotal');
         
-        if (peakHourEl) peakHourEl.textContent = '2 PM'; // Default or calculate from sales
-        if (peakHourAmountEl) peakHourAmountEl.textContent = `₦${(salesAnalysis?.totalSales || 0).toLocaleString()}`;
+        if (peakHourEl) peakHourEl.textContent = salesAnalysis.peakHour?.formattedHour || '2 PM';
+        if (peakHourAmountEl) peakHourAmountEl.textContent = `₦${(salesAnalysis.peakHour?.amount || salesAnalysis.totalSales || 0).toLocaleString()}`;
         if (averageSaleAmountEl) averageSaleAmountEl.textContent = `₦${Math.round(salesAnalysis?.averageSale || 0).toLocaleString()}`;
-        if (topReasonEl) topReasonEl.textContent = 'Regular Sale';
+        if (topReasonEl) topReasonEl.textContent = salesAnalysis.topReason || 'Regular Sale';
         if (reasonCountEl) reasonCountEl.textContent = `${salesAnalysis?.transactionCount || 0} sales`;
         if (profitMarginPercentEl) profitMarginPercentEl.textContent = `${salesAnalysis?.profitMargin || '0'}%`;
         if (totalProfitEl) totalProfitEl.textContent = `₦${Math.round(salesAnalysis?.totalProfit || 0).toLocaleString()} profit`;
@@ -461,7 +524,7 @@ class CEODashboard {
         let html = '';
         const total = sales.reduce((sum, s) => sum + (s.total_price || 0), 0);
         
-        sales.slice(0, 15).forEach(sale => {
+        sales.slice(0, CEO_CONFIG.MAX_ROWS_PER_TABLE).forEach(sale => {
             const profit = (sale.total_price || 0) * 0.3; // 30% profit estimate
             
             html += `
@@ -471,7 +534,7 @@ class CEODashboard {
                     <td>${sale.product_name || 'Product'}</td>
                     <td style="text-align: center;">${sale.quantity || 0}</td>
                     <td>₦${(sale.total_price || 0).toLocaleString()}</td>
-                    <td><span class="payment-method">${sale.payment_method || 'cash'}</span></td>
+                    <td><span class="payment-method ${sale.payment_method?.toLowerCase() || 'cash'}">${sale.payment_method || 'cash'}</span></td>
                     <td><span class="sale-reason">${sale.reason || 'Sale'}</span></td>
                     <td style="color: #10b981;">₦${Math.round(profit).toLocaleString()}</td>
                 </tr>
@@ -500,7 +563,7 @@ class CEODashboard {
         
         let html = '';
         
-        products.slice(0, 10).forEach((product, index) => {
+        products.slice(0, CEO_CONFIG.TOP_PRODUCTS_LIMIT).forEach((product, index) => {
             const qty = product.current_qty || 0;
             const price = product.price || 0;
             const status = qty <= CEO_CONFIG.STOCK_CRITICAL ? 'critical' :
@@ -512,7 +575,7 @@ class CEODashboard {
             html += `
                 <tr>
                     <td><strong>${product.name || 'Product'}</strong></td>
-                    <td style="text-align: center;">${qty}</td>
+                    <td style="text-align: center;">${qty.toLocaleString()}</td>
                     <td style="text-align: center;">${product.sold_today || 0}</td>
                     <td>₦${stockValue.toLocaleString()}</td>
                     <td style="text-align: center;">${product.turnover_rate || '0'}%</td>
@@ -523,7 +586,7 @@ class CEODashboard {
         });
         
         tbody.innerHTML = html;
-        if (totalEl) totalEl.textContent = `Top ${Math.min(products.length, 10)} Products`;
+        if (totalEl) totalEl.textContent = `Top ${Math.min(products.length, CEO_CONFIG.TOP_PRODUCTS_LIMIT)} Products`;
     }
     
     updateStockTable(products) {
@@ -545,7 +608,7 @@ class CEODashboard {
         let html = '';
         let totalValue = 0;
         
-        products.slice(0, 15).forEach(p => {
+        products.slice(0, CEO_CONFIG.MAX_ROWS_PER_TABLE).forEach(p => {
             const qty = p.current_qty || 0;
             const price = p.price || 0;
             const value = qty * price;
@@ -558,7 +621,7 @@ class CEODashboard {
             html += `
                 <tr>
                     <td><strong>${p.name || 'Product'}</strong></td>
-                    <td style="text-align: center;">${qty}</td>
+                    <td style="text-align: center;">${qty.toLocaleString()}</td>
                     <td style="text-align: center;">${p.min_qty || CEO_CONFIG.STOCK_WARNING}</td>
                     <td>₦${price.toLocaleString()}</td>
                     <td>₦${value.toLocaleString()}</td>
@@ -591,7 +654,7 @@ class CEODashboard {
         let html = '';
         const total = debts.reduce((sum, d) => sum + (d.amount || 0), 0);
         
-        debts.slice(0, 15).forEach(debt => {
+        debts.slice(0, CEO_CONFIG.MAX_ROWS_PER_TABLE).forEach(debt => {
             const days = debt.days_owing || 0;
             let overdueClass = '';
             if (days > 90) overdueClass = 'overdue-severe';
@@ -632,7 +695,7 @@ class CEODashboard {
         
         let html = '';
         
-        customers.slice(0, 10).forEach(customer => {
+        customers.slice(0, CEO_CONFIG.TOP_PRODUCTS_LIMIT).forEach(customer => {
             const lastPurchase = customer.last_purchase ? 
                 new Date(customer.last_purchase).toLocaleDateString() : 'Never';
             
@@ -649,7 +712,7 @@ class CEODashboard {
         });
         
         tbody.innerHTML = html;
-        if (totalEl) totalEl.textContent = `Top ${Math.min(customers.length, 10)}`;
+        if (totalEl) totalEl.textContent = `Top ${Math.min(customers.length, CEO_CONFIG.TOP_PRODUCTS_LIMIT)}`;
     }
     
     updateSectionTotals(summary, products) {
@@ -670,8 +733,8 @@ class CEODashboard {
             stockTotal.textContent = `Total Value: ₦${stockValue.toLocaleString()}`;
         }
         if (debtTotal) debtTotal.textContent = `Total Owing: ₦${(summary.totalDebt || 0).toLocaleString()}`;
-        if (topProductsTotal) topProductsTotal.textContent = `Top ${Math.min(this.businessData.topProducts?.length || 0, 10)} Products`;
-        if (customersTotal) customersTotal.textContent = `Top ${Math.min(this.businessData.customers?.length || 0, 10)}`;
+        if (topProductsTotal) topProductsTotal.textContent = `Top ${Math.min(this.businessData.topProducts?.length || 0, CEO_CONFIG.TOP_PRODUCTS_LIMIT)} Products`;
+        if (customersTotal) customersTotal.textContent = `Top ${Math.min(this.businessData.customers?.length || 0, CEO_CONFIG.TOP_PRODUCTS_LIMIT)}`;
         if (analysisTotal) analysisTotal.textContent = `${summary.transactionCount || 0} transactions analyzed`;
     }
     
@@ -691,10 +754,10 @@ class CEODashboard {
                 refreshBtn.disabled = true;
             }
             
-            this.showMessage('Refreshing data...', 'info');
+            this.showMessage('Refreshing data from Arijeem Insight 360...', 'info');
             
             // Test connection
-            const connected = await window.ceoDB.testConnection();
+            const connected = await window.ceoDB.forceRefresh();
             
             if (connected) {
                 await this.loadBusinessData();
@@ -706,47 +769,58 @@ class CEODashboard {
         } catch (error) {
             console.error('Force refresh error:', error);
             this.showMessage('Refresh failed', 'error');
-        } finally {
-            setTimeout(() => {
-                const refreshBtn = document.querySelector('.btn-refresh');
-                if (refreshBtn) {
-                    refreshBtn.innerHTML = '🔄 REFRESH NOW';
-                    refreshBtn.disabled = false;
-                }
-            }, 2000);
         }
+        
+        setTimeout(() => {
+            const refreshBtn = document.querySelector('.btn-refresh');
+            if (refreshBtn) {
+                refreshBtn.innerHTML = '🔄 REFRESH NOW';
+                refreshBtn.disabled = false;
+            }
+        }, 2000);
     }
     
-    // PDF REPORT GENERATION - COMPLETE FIX
+    // PDF REPORT GENERATION - COMPLETE FIXED VERSION
     async generatePDFReport() {
         if (this.isGeneratingPDF) return;
         
+        this.isGeneratingPDF = true;
+        
         try {
-            this.isGeneratingPDF = true;
-            
             if (!this.businessData) {
                 this.showMessage('Please load data first', 'info');
-                return;
+                await this.loadBusinessData();
             }
             
-            this.showMessage('Generating PDF report...', 'info');
+            // Show PDF loading overlay
+            const pdfLoading = document.getElementById('pdfLoading');
+            if (pdfLoading) pdfLoading.style.display = 'flex';
+            
+            this.showMessage('Generating professional PDF report...', 'info');
             
             // Load jsPDF if not available
             if (typeof jspdf === 'undefined') {
                 await this.loadJSPDF();
             }
             
-            // Generate PDF
-            await this.createCompletePDFReport();
+            // Load AutoTable plugin if not available
+            await this.loadAutoTablePlugin();
             
-            this.showMessage('✅ PDF report generated successfully!', 'success');
+            // Generate professional PDF
+            await this.createProfessionalPDFReport();
+            
+            this.showMessage('✅ Professional PDF report generated successfully!', 'success');
             
         } catch (error) {
             console.error('PDF generation error:', error);
-            this.showMessage('Failed to generate PDF', 'error');
-        } finally {
-            this.isGeneratingPDF = false;
+            this.showMessage('Failed to generate PDF. Please try again.', 'error');
         }
+        
+        // Hide PDF loading overlay
+        const pdfLoading = document.getElementById('pdfLoading');
+        if (pdfLoading) pdfLoading.style.display = 'none';
+        
+        this.isGeneratingPDF = false;
     }
     
     async loadJSPDF() {
@@ -759,212 +833,343 @@ class CEODashboard {
         });
     }
     
-    async createCompletePDFReport() {
+    async loadAutoTablePlugin() {
+        return new Promise((resolve, reject) => {
+            if (typeof window.jspdf !== 'undefined' && window.jspdf.jsPDF && window.jspdf.jsPDF.API.autoTable) {
+                resolve();
+                return;
+            }
+            
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    }
+    
+    async createProfessionalPDFReport() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('p', 'mm', 'a4');
+        
         const pageWidth = doc.internal.pageSize.width;
+        const margin = 20;
         let yPos = 20;
         
-        // HEADER
+        // ===== PAGE 1: EXECUTIVE SUMMARY =====
+        // Header
+        doc.setFillColor(0, 75, 147);
+        doc.rect(0, 0, pageWidth, 40, 'F');
+        
         doc.setFontSize(24);
-        doc.setTextColor(0, 75, 147);
-        doc.text('ARIJEEM ENTERPRISES', pageWidth / 2, yPos, { align: 'center' });
+        doc.setTextColor(255, 255, 255);
+        doc.text('ARIJEEM ENTERPRISES', pageWidth / 2, 20, { align: 'center' });
         
         doc.setFontSize(18);
-        doc.text('CEO BUSINESS REPORT', pageWidth / 2, yPos + 10, { align: 'center' });
+        doc.text('CEO BUSINESS REPORT', pageWidth / 2, 30, { align: 'center' });
         
-        doc.setFontSize(12);
+        yPos = 50;
+        
+        // Report Info
+        doc.setFontSize(11);
         doc.setTextColor(100, 100, 100);
-        doc.text(`Report Date: ${new Date().toLocaleString()}`, pageWidth / 2, yPos + 18, { align: 'center' });
+        const reportDate = new Date();
+        doc.text(`Report Date: ${reportDate.toLocaleDateString('en-NG')}`, margin, yPos);
+        doc.text(`Report Time: ${reportDate.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}`, pageWidth - margin, yPos, { align: 'right' });
         
-        yPos = 45;
+        yPos += 15;
         
-        // EXECUTIVE SUMMARY
+        // Executive Summary Title
         doc.setFontSize(16);
         doc.setTextColor(0, 75, 147);
-        doc.text('EXECUTIVE SUMMARY', 20, yPos);
+        doc.text('EXECUTIVE SUMMARY', margin, yPos);
         
         yPos += 10;
-        doc.setFontSize(11);
-        doc.setTextColor(0, 0, 0);
         
+        // Get REAL data from businessData
         const { summary, salesAnalysis, products, sales, debts, customers } = this.businessData;
         
+        // Calculate CORRECT stock value
         const totalStockValue = products.reduce((sum, p) => {
-            const price = p.price || 0;
-            return sum + ((p.current_qty || 0) * price);
+            const qty = p.current_qty || p.quantity || 0;
+            const price = p.price || p.selling_price || 0;
+            return sum + (qty * price);
         }, 0);
         
+        // Calculate CORRECT totals
+        const actualTotalSales = summary?.totalSales || sales.reduce((sum, s) => sum + (s.total_price || s.amount || 0), 0);
+        const actualProductsSold = summary?.productsSold || sales.reduce((sum, s) => sum + (s.quantity || 1), 0);
+        const actualTotalDebt = summary?.totalDebt || debts.reduce((sum, d) => sum + (d.amount || d.amount_owing || 0), 0);
+        const actualTransactionCount = summary?.transactionCount || sales.length;
+        const actualCustomerCount = summary?.activeCustomers || customers.length;
+        
+        // Summary Table
         const summaryData = [
-            `Total Sales Today: ₦${(summary.totalSales || 0).toLocaleString()}`,
-            `Products Sold: ${summary.productsSold || 0} units`,
-            `Total Profit: ₦${Math.round(salesAnalysis?.totalProfit || 0).toLocaleString()}`,
-            `Profit Margin: ${salesAnalysis?.profitMargin || '0'}%`,
-            `Transaction Count: ${summary.transactionCount || 0}`,
-            `Average Sale: ₦${Math.round(salesAnalysis?.averageSale || 0).toLocaleString()}`,
-            `Total Stock Value: ₦${totalStockValue.toLocaleString()}`,
-            `Products in Inventory: ${products.length}`,
-            `Outstanding Debts: ₦${summary.totalDebt || 0}`,
-            `Active Customers: ${customers.length}`
+            ['Metric', 'Value', 'Details'],
+            ['Total Sales Today', `₦${actualTotalSales.toLocaleString()}`, 'Gross revenue from all sales'],
+            ['Products Sold', `${actualProductsSold.toLocaleString()} units`, 'Total quantity sold'],
+            ['Transaction Count', `${actualTransactionCount} transactions`, 'Number of sales transactions'],
+            ['Average Sale Value', `₦${Math.round(salesAnalysis?.averageSale || (actualTotalSales / Math.max(actualTransactionCount, 1))).toLocaleString()}`, 'Average per transaction'],
+            ['Total Profit', `₦${Math.round(salesAnalysis?.totalProfit || (actualTotalSales * 0.3)).toLocaleString()}`, 'Estimated 30% profit margin'],
+            ['Profit Margin', `${salesAnalysis?.profitMargin || '30'}%`, 'Net profit percentage'],
+            ['Total Stock Value', `₦${totalStockValue.toLocaleString()}`, 'Current inventory value'],
+            ['Products in Inventory', `${products.length} items`, 'Different products in stock'],
+            ['Stock Status', products.length > 0 ? 'ACTIVE' : 'EMPTY', 'Inventory status'],
+            ['Outstanding Debts', `₦${actualTotalDebt.toLocaleString()}`, 'Total amount owed'],
+            ['Active Customers', `${actualCustomerCount} customers`, 'Unique customers today']
         ];
         
-        summaryData.forEach((item, index) => {
-            doc.text(item, 25, yPos + (index * 7));
+        doc.autoTable({
+            startY: yPos,
+            head: [summaryData[0]],
+            body: summaryData.slice(1),
+            theme: 'grid',
+            headStyles: { fillColor: [0, 75, 147], textColor: [255, 255, 255], fontSize: 11 },
+            bodyStyles: { fontSize: 10 },
+            alternateRowStyles: { fillColor: [245, 245, 245] },
+            margin: { left: margin, right: margin }
         });
         
-        yPos += 80;
-        
-        // SALES DETAILS
+        // ===== PAGE 2: SALES DETAILS =====
         if (sales.length > 0) {
             doc.addPage();
             yPos = 20;
             
             doc.setFontSize(16);
             doc.setTextColor(0, 75, 147);
-            doc.text('TODAY\'S SALES DETAILS', 20, yPos);
+            doc.text('TODAY\'S SALES DETAILS', margin, yPos);
             
             yPos += 10;
-            doc.setFontSize(10);
             
-            // Table header
-            doc.setFillColor(0, 75, 147);
-            doc.setTextColor(255, 255, 255);
-            doc.rect(20, yPos, 170, 8, 'F');
-            doc.text('Time', 22, yPos + 6);
-            doc.text('Customer', 50, yPos + 6);
-            doc.text('Product', 90, yPos + 6);
-            doc.text('Amount', 150, yPos + 6);
+            // Prepare sales data for table
+            const salesTableData = sales.slice(0, 50).map(sale => [
+                sale.time || new Date(sale.sale_date || sale.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                sale.customer_name?.substring(0, 15) || 'Customer',
+                sale.product_name?.substring(0, 20) || 'Product',
+                sale.quantity || 1,
+                `₦${(sale.total_price || sale.amount || 0).toLocaleString()}`,
+                sale.payment_method || 'Cash',
+                `₦${Math.round((sale.total_price || 0) * 0.3).toLocaleString()}`
+            ]);
             
-            yPos += 10;
-            doc.setTextColor(0, 0, 0);
+            // Add header
+            salesTableData.unshift(['Time', 'Customer', 'Product', 'Qty', 'Amount', 'Payment', 'Profit']);
             
-            // Sales rows
-            sales.slice(0, 30).forEach((sale, index) => {
-                if (yPos > 270) {
-                    doc.addPage();
-                    yPos = 20;
-                }
-                
-                doc.text(sale.time || 'N/A', 22, yPos);
-                doc.text(sale.customer_name || 'Customer', 50, yPos);
-                doc.text(sale.product_name || 'Product', 90, yPos);
-                doc.text(`₦${(sale.total_price || 0).toLocaleString()}`, 150, yPos);
-                
-                yPos += 7;
+            doc.autoTable({
+                startY: yPos,
+                head: [salesTableData[0]],
+                body: salesTableData.slice(1),
+                theme: 'grid',
+                headStyles: { fillColor: [0, 75, 147], textColor: [255, 255, 255], fontSize: 10 },
+                bodyStyles: { fontSize: 9 },
+                alternateRowStyles: { fillColor: [250, 250, 250] },
+                margin: { left: margin, right: margin },
+                pageBreak: 'auto',
+                styles: { overflow: 'linebreak', cellWidth: 'wrap' }
             });
         }
         
-        // STOCK REPORT
+        // ===== PAGE 3: STOCK INVENTORY =====
         if (products.length > 0) {
             doc.addPage();
             yPos = 20;
             
             doc.setFontSize(16);
             doc.setTextColor(0, 75, 147);
-            doc.text('STOCK INVENTORY REPORT', 20, yPos);
+            doc.text('STOCK INVENTORY REPORT', margin, yPos);
             
             yPos += 10;
             
-            // Stock summary
+            // Stock Summary
             doc.setFontSize(11);
+            doc.setTextColor(0, 0, 0);
+            
             const { stock } = this.businessData;
-            doc.text(`Critical Items: ${stock.critical?.length || 0}`, 20, yPos);
-            doc.text(`Warning Items: ${stock.warning?.length || 0}`, 80, yPos);
-            doc.text(`Good Items: ${stock.good?.length || 0}`, 140, yPos);
+            // Calculate REAL stock levels
+            let criticalCount = 0, warningCount = 0, goodCount = 0;
+            
+            products.forEach(p => {
+                const qty = p.current_qty || 0;
+                if (qty <= CEO_CONFIG.STOCK_CRITICAL) criticalCount++;
+                else if (qty <= CEO_CONFIG.STOCK_WARNING) warningCount++;
+                else goodCount++;
+            });
+            
+            doc.text(`Total Products: ${products.length}`, margin, yPos);
+            doc.text(`Critical Stock (≤${CEO_CONFIG.STOCK_CRITICAL}): ${criticalCount} items`, margin + 70, yPos);
+            doc.text(`Low Stock (≤${CEO_CONFIG.STOCK_WARNING}): ${warningCount} items`, margin + 140, yPos);
+            yPos += 8;
+            doc.text(`Good Stock: ${goodCount} items`, margin, yPos);
+            doc.text(`Total Stock Value: ₦${totalStockValue.toLocaleString()}`, margin + 70, yPos);
             
             yPos += 15;
             
-            // Table header
-            doc.setFillColor(0, 75, 147);
-            doc.setTextColor(255, 255, 255);
-            doc.rect(20, yPos, 170, 8, 'F');
-            doc.text('Product', 22, yPos + 6);
-            doc.text('Stock', 80, yPos + 6);
-            doc.text('Min', 100, yPos + 6);
-            doc.text('Value', 130, yPos + 6);
-            doc.text('Status', 160, yPos + 6);
-            
-            yPos += 10;
-            doc.setTextColor(0, 0, 0);
-            
-            // Stock rows
-            products.slice(0, 30).forEach(product => {
-                if (yPos > 270) {
-                    doc.addPage();
-                    yPos = 20;
-                }
-                
+            // Prepare stock data for table (Showing ACTUAL stock quantities)
+            const stockTableData = products.slice(0, CEO_CONFIG.MAX_PDF_PRODUCTS).map(product => {
                 const qty = product.current_qty || 0;
-                const value = qty * (product.price || 0);
+                const price = product.price || product.selling_price || 0;
+                const value = qty * price;
                 let status = 'GOOD';
                 if (qty <= CEO_CONFIG.STOCK_CRITICAL) status = 'CRITICAL';
-                else if (qty <= CEO_CONFIG.STOCK_WARNING) status = 'WARNING';
+                else if (qty <= CEO_CONFIG.STOCK_WARNING) status = 'LOW';
                 
-                doc.text(product.name || 'Product', 22, yPos);
-                doc.text(qty.toString(), 80, yPos);
-                doc.text((product.min_qty || CEO_CONFIG.STOCK_WARNING).toString(), 100, yPos);
-                doc.text(`₦${value.toLocaleString()}`, 130, yPos);
-                doc.text(status, 160, yPos);
-                
-                yPos += 7;
+                return [
+                    product.name || 'Product',
+                    qty.toLocaleString(),
+                    (product.min_qty || CEO_CONFIG.STOCK_WARNING).toLocaleString(),
+                    `₦${price.toLocaleString()}`,
+                    `₦${value.toLocaleString()}`,
+                    status,
+                    qty <= CEO_CONFIG.STOCK_WARNING ? 'YES' : 'NO'
+                ];
+            });
+            
+            // Add header
+            stockTableData.unshift(['Product Name', 'Current Stock', 'Min Level', 'Unit Price', 'Stock Value', 'Status', 'Reorder']);
+            
+            doc.autoTable({
+                startY: yPos,
+                head: [stockTableData[0]],
+                body: stockTableData.slice(1),
+                theme: 'grid',
+                headStyles: { fillColor: [0, 75, 147], textColor: [255, 255, 255], fontSize: 10 },
+                bodyStyles: { fontSize: 9 },
+                alternateRowStyles: { fillColor: [250, 250, 250] },
+                margin: { left: margin, right: margin },
+                pageBreak: 'auto',
+                styles: { overflow: 'linebreak', cellWidth: 'wrap' },
+                didDrawCell: (data) => {
+                    // Color code status cells
+                    if (data.column.index === 5 && data.cell.raw === 'CRITICAL') {
+                        doc.setFillColor(254, 226, 226);
+                        doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+                        doc.setTextColor(220, 38, 38);
+                        doc.text(data.cell.raw, data.cell.x + 2, data.cell.y + data.cell.height - 2);
+                        return false;
+                    }
+                    if (data.column.index === 5 && data.cell.raw === 'LOW') {
+                        doc.setFillColor(254, 243, 199);
+                        doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+                        doc.setTextColor(217, 119, 6);
+                        doc.text(data.cell.raw, data.cell.x + 2, data.cell.y + data.cell.height - 2);
+                        return false;
+                    }
+                }
             });
         }
         
-        // DEBTS REPORT
-        if (debts.length > 0) {
+        // ===== PAGE 4: DEBTS & CUSTOMERS =====
+        if (debts.length > 0 || customers.length > 0) {
             doc.addPage();
             yPos = 20;
             
-            doc.setFontSize(16);
-            doc.setTextColor(0, 75, 147);
-            doc.text('OUTSTANDING DEBTS', 20, yPos);
-            
-            yPos += 10;
-            
-            // Table header
-            doc.setFillColor(0, 75, 147);
-            doc.setTextColor(255, 255, 255);
-            doc.rect(20, yPos, 170, 8, 'F');
-            doc.text('Customer', 22, yPos + 6);
-            doc.text('Amount', 80, yPos + 6);
-            doc.text('Days', 120, yPos + 6);
-            doc.text('Phone', 140, yPos + 6);
-            
-            yPos += 10;
-            doc.setTextColor(0, 0, 0);
-            
-            // Debt rows
-            debts.slice(0, 30).forEach(debt => {
-                if (yPos > 270) {
-                    doc.addPage();
-                    yPos = 20;
-                }
+            // Outstanding Debts
+            if (debts.length > 0) {
+                doc.setFontSize(16);
+                doc.setTextColor(0, 75, 147);
+                doc.text('OUTSTANDING DEBTS', margin, yPos);
                 
-                doc.text(debt.customer_name || 'Customer', 22, yPos);
-                doc.text(`₦${(debt.amount || 0).toLocaleString()}`, 80, yPos);
-                doc.text((debt.days_owing || 0).toString(), 120, yPos);
-                doc.text(debt.phone || 'N/A', 140, yPos);
+                yPos += 10;
                 
-                yPos += 7;
-            });
+                const debtsTableData = debts.slice(0, 50).map(debt => {
+                    const days = debt.days_owing || this.calculateDaysOwing(debt.created_at);
+                    return [
+                        debt.customer_name || 'Customer',
+                        `₦${(debt.amount || debt.amount_owing || 0).toLocaleString()}`,
+                        `${days} days`,
+                        debt.phone || 'N/A',
+                        days > 90 ? 'SEVERE' : days > 30 ? 'HIGH' : 'NORMAL'
+                    ];
+                });
+                
+                debtsTableData.unshift(['Customer', 'Amount Owed', 'Days Owing', 'Contact', 'Priority']);
+                
+                doc.autoTable({
+                    startY: yPos,
+                    head: [debtsTableData[0]],
+                    body: debtsTableData.slice(1),
+                    theme: 'grid',
+                    headStyles: { fillColor: [220, 38, 38], textColor: [255, 255, 255], fontSize: 10 },
+                    bodyStyles: { fontSize: 9 },
+                    margin: { left: margin, right: margin }
+                });
+                
+                yPos = doc.lastAutoTable.finalY + 20;
+            }
+            
+            // Top Customers
+            if (customers.length > 0) {
+                doc.setFontSize(16);
+                doc.setTextColor(0, 75, 147);
+                doc.text('TOP CUSTOMERS', margin, yPos);
+                
+                yPos += 10;
+                
+                const customersTableData = customers.slice(0, 20).map(customer => [
+                    customer.name || 'Customer',
+                    `₦${(customer.total_spent || 0).toLocaleString()}`,
+                    customer.purchase_count || 0,
+                    `₦${Math.round((customer.total_spent || 0) / Math.max(customer.purchase_count || 1, 1)).toLocaleString()}`,
+                    customer.last_purchase ? new Date(customer.last_purchase).toLocaleDateString() : 'Never',
+                    customer.phone || 'N/A'
+                ]);
+                
+                customersTableData.unshift(['Customer Name', 'Total Spent', 'Visits', 'Average Spend', 'Last Visit', 'Contact']);
+                
+                doc.autoTable({
+                    startY: yPos,
+                    head: [customersTableData[0]],
+                    body: customersTableData.slice(1),
+                    theme: 'grid',
+                    headStyles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontSize: 10 },
+                    bodyStyles: { fontSize: 9 },
+                    margin: { left: margin, right: margin }
+                });
+            }
         }
         
-        // FOOTER
-        const lastPage = doc.internal.getNumberOfPages();
-        doc.setPage(lastPage);
-        yPos = doc.internal.pageSize.height - 30;
+        // ===== FINAL PAGE: FOOTER =====
+        const totalPages = doc.internal.getNumberOfPages();
         
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text('--- END OF REPORT ---', pageWidth / 2, yPos, { align: 'center' });
-        yPos += 7;
-        doc.text('Arijeem Insight 360 - CEO Dashboard', pageWidth / 2, yPos, { align: 'center' });
-        yPos += 7;
-        doc.text('Confidential - For Executive Use Only', pageWidth / 2, yPos, { align: 'center' });
+        for (let i = 1; i <= totalPages; i++) {
+            doc.setPage(i);
+            
+            // Page number
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, doc.internal.pageSize.height - 10, { align: 'right' });
+            
+            // Footer line
+            doc.setDrawColor(200, 200, 200);
+            doc.line(margin, doc.internal.pageSize.height - 15, pageWidth - margin, doc.internal.pageSize.height - 15);
+            
+            // Footer text on last page
+            if (i === totalPages) {
+                doc.setFontSize(10);
+                doc.setTextColor(0, 75, 147);
+                doc.text('ARIJEEM INSIGHT 360 - CEO DASHBOARD', pageWidth / 2, doc.internal.pageSize.height - 25, { align: 'center' });
+                doc.setFontSize(9);
+                doc.setTextColor(100, 100, 100);
+                doc.text('Confidential - For Executive Use Only', pageWidth / 2, doc.internal.pageSize.height - 20, { align: 'center' });
+                doc.text(`Generated: ${reportDate.toLocaleString()}`, pageWidth / 2, doc.internal.pageSize.height - 15, { align: 'center' });
+                doc.text(`Generated by: ${this.currentCEO?.name || 'CEO Dashboard'}`, pageWidth / 2, doc.internal.pageSize.height - 10, { align: 'center' });
+            }
+        }
         
         // SAVE PDF
-        const filename = `Arijeem-CEO-Report-${new Date().toISOString().split('T')[0]}.pdf`;
+        const filename = `Arijeem-CEO-Report-${reportDate.toISOString().split('T')[0]}-${reportDate.getHours()}${reportDate.getMinutes()}.pdf`;
         doc.save(filename);
+        
+        console.log('✅ PDF generated successfully:', filename);
+    }
+    
+    // Helper function to calculate days owing
+    calculateDaysOwing(dateString) {
+        if (!dateString) return 0;
+        const debtDate = new Date(dateString);
+        const today = new Date();
+        const diffTime = Math.abs(today - debtDate);
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
     
     // LOGOUT
@@ -1001,10 +1206,13 @@ class CEODashboard {
     }
 }
 
-// Initialize dashboard
+// Initialize dashboard when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 CEO Dashboard starting...');
     window.ceoDashboard = new CEODashboard();
     window.ceoDashboard.showCreateAccountScreen();
     console.log('✅ CEO Dashboard started successfully');
+    
+    // Log in Jesus' name
+    console.log('🙏 In Jesus Name, This Dashboard Will Work Perfectly!');
 });
